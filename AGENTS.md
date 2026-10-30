@@ -32,8 +32,20 @@ python -m guard doctor          # verify Atlas: duplicate + validator + index ch
 python -m guard seed            # load data/*.json into Atlas (safe to repeat)
 ```
 
-Later steps add: `python -m guard run <version> | compare <base> <cand>` and
-`uvicorn guard.api:app --reload` for the dashboard.
+Demo flow on the CLI:
+
+```bash
+python -m guard run v1
+python -m guard run v2
+python -m guard compare v1 v2                      # NOT SAFE, exit 1
+python -m guard run v3
+python -m guard compare v1 v3                      # RISKY, exit 2
+python -m guard run v3 --simulate-timeouts tc03,tc05,tc09
+python -m guard compare v1 v3                      # INCONCLUSIVE, exit 2
+python -m guard demo-duplicate                     # duplicate ignored
+python -m guard demo-incomplete                    # rejected by validator (Atlas only)
+python -m guard reset --yes                        # clear run history
+```
 
 ## Layout
 
@@ -44,9 +56,10 @@ guard/db.py          get_db(), VALIDATORS, INDEXES, ensure_schema(), supports_pe
 guard/cli.py         typer app (python -m guard ...)
 guard/checks.py      run_check(check, output) -> {type, passed, detail}; run_checks() -> (passed, results)
 guard/seed.py        seed(db): validate data/*.json, then idempotent upsert
-guard/mock_model.py  [step 3] call_model(prompt_version, test_case, simulate_timeout)
-guard/runner.py      [step 3] run_eval(db, version, simulate_timeouts, run_id, on_result)
-guard/compare.py     [step 4] compare_pipeline(), run_stats(), decide(), compare_runs()
+guard/mock_model.py  call_model(prompt_version, test_case, simulate_timeout) + scripted outputs
+guard/runner.py      start_run(), run_eval(db, version, simulate_timeouts=, run_id=, on_result=, delay_s=)
+guard/compare.py     compare_pipeline(), run_stats(), decide(), compare_runs(db, base, cand)
+guard/demo.py        replay_duplicate(), insert_incomplete()  (failure-case demos)
 guard/api.py         [step 5] FastAPI app, REST + SSE (change streams)
 web/index.html       [step 6] single page, plain JS, no build step
 data/*.json          prompts.json (v1,v2,v3), test_cases.json (tc01..tc12)

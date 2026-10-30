@@ -105,7 +105,7 @@ Expected comparisons (these are acceptance tests):
 
 | Comparison | Expected verdict | Why |
 |---|---|---|
-| v1 → v2 | **NOT_SAFE** | 3 regressed (tc02, tc07, tc11), 1 fixed (tc10); cost ≈ -85%, latency down |
+| v1 → v2 | **NOT_SAFE** | 3 regressed (tc02, tc07, tc11), 1 fixed (tc10); cost -92%, p95 -30% |
 | v1 → v3 | **RISKY** | 0 regressed, 1 fixed; p95 latency > +25% and cost > +30% |
 | v1 → v3 with timeouts on tc03,tc05,tc09 | **INCONCLUSIVE** | 0 regressed, 3 unverified |
 
