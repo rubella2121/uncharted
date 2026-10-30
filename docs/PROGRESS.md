@@ -15,37 +15,33 @@ Update this file in the same commit as the work. Mark a step done only when its
 | 3 | Mock model + runner | `guard/mock_model.py`, `guard/runner.py`, `guard run` | `guard run v1` stores 12 results (11 pass); re-running a stored result is ignored; `--simulate-timeouts` works; `guard run v99` exits 3 | ✅ done |
 | 4 | Comparison + verdict | `guard/compare.py`, `guard compare`, `tests/test_compare.py` | v1→v2 NOT_SAFE (3 regressed, 1 fixed); v1→v3 RISKY; v1→v3+timeouts INCONCLUSIVE; exit codes correct | ✅ done |
 | 5 | API | `guard/api.py` | all endpoints in SPEC §12 respond; runs can be started from HTTP | ✅ done (SSE verified only via polling fallback; check live against Atlas) |
-| 6 | Live dashboard | `web/index.html`, SSE endpoints | rows appear live while a run executes; verdict banner updates; buttons for run / compare / timeouts / duplicate / reset | ⬜ |
-| 7 | Deploy | `render.yaml` or equivalent, README deploy section | public URL works against Atlas; judges can run the full demo from the browser | ⬜ |
+| 6 | Live dashboard | `web/index.html`, SSE endpoints | rows appear live while a run executes; verdict banner updates; buttons for run / compare / timeouts / duplicate / reset | ✅ done (browser-tested against mongomock in polling mode) |
+| 7 | Deploy | `render.yaml` or equivalent, README deploy section | public URL works against Atlas; judges can run the full demo from the browser | 🟡 config ready (`render.yaml`, `Dockerfile`, `Procfile`, `docs/DEPLOY.md`); **a team member must deploy** |
 | — | **FEATURE FREEZE** at ~6:00 PM IST | | | |
-| 8 | Polish + submission | README, architecture diagram, `.explain()` screenshot, PPT, ≤7 min demo video | rulebook section 16 checklist complete | ⬜ |
+| 8 | Polish + submission | README, architecture diagram, `.explain()` screenshot, PPT, ≤7 min demo video | rulebook section 16 checklist complete | 🟡 README, `docs/DEMO_SCRIPT.md`, `docs/PPT_OUTLINE.md` written; still need: live URL in README, screenshots from Atlas, PPT, video |
 
 If behind schedule, cut in this order: bonus features → `.explain()` screenshot → UI
 polish. Never cut the failure-case demo or the INCONCLUSIVE logic.
 
-## Notes for the next step (Step 6: dashboard, `web/index.html`)
+## What is left (needs a human with Atlas + Render accounts)
 
-API contract (all JSON; datetimes are ISO strings; FastAPI docs at `/docs`):
+1. `python -m guard doctor` against Atlas → all PASS. (Nothing has run against a real
+   MongoDB yet; the build sandbox could not reach Atlas.)
+2. `uvicorn guard.api:app` locally → header shows **live: change stream** (not polling);
+   run the full demo once in the browser.
+3. Deploy following `docs/DEPLOY.md`; run its checklist; put the URL in README.
+4. Screenshots from the deployed app + Atlas (documents, validator, indexes, explain)
+   for the PPT; record the video with `docs/DEMO_SCRIPT.md`.
+5. Rulebook section 16 checklist. **Submit by 10 PM; no commits after 9 PM.**
 
-| Call | Returns |
-|---|---|
-| `GET /api/health` | `{ok, mongodb, percentile, project_id}` or `{ok:false, error}` |
-| `GET /api/versions`, `GET /api/test-cases` | lists (test case has `_id, name, risk, input, checks`) |
-| `GET /api/runs?limit=20` | runs, newest first (`_id, prompt_version, status, summary{total,passed,errors}`) |
-| `GET /api/runs/{id}` | `{run, results[]}` (result: `test_case_id, status, passed, checks[{type,passed,detail}], output, latency_ms, cost_usd, error`) |
-| `POST /api/runs {version, simulate_timeouts:[]}` | `{run_id, status:"running"}`; 404 unknown version; 429 busy |
-| `POST /api/compare {baseline, candidate}` | comparison (`verdict, reasons[], warnings[], counts{}, metrics{baseline,candidate,p95_change_pct,cost_change_pct}, rows[{test_case_id,change}], exit_code`) |
-| `GET /api/comparisons/latest` | latest comparison or null |
-| `POST /api/demo/duplicate` / `incomplete` / `reset` | outcome objects |
-| `GET /api/stream` (EventSource) | events `result`, `run`, `comparison` (full docs); `mode` = `{mode:"change_stream"}` or `{mode:"polling"}` → then poll `/api/runs/{id}` every 1 s |
+Optional, only if all of the above is done before ~6 PM: real-LLM mode behind a flag
+(`call_model` replacement, temperature 0, reads `ANTHROPIC_API_KEY`/other key from env),
+`--repeats N`, PR comment bot. Do not risk the working demo for these.
 
-Page must: pick a version and start a run (with optional timeout checkboxes), show the
-results table filling live (green pass, red fail with failing check details, grey
-timeout), pick baseline/candidate and compare, show a big verdict banner (SAFE green,
-RISKY amber, NOT SAFE red, INCONCLUSIVE grey/purple) with reasons, the per-case change
-list, and p95/cost deltas; buttons for duplicate / incomplete / reset demos; a small
-"How MongoDB is used" panel. Load state over REST first, then subscribe; de-duplicate by `_id`.
-Plain HTML + JS in one file, no build step.
+If something breaks on Atlas, likely suspects: `$percentile` (needs 7.0+, has a Python
+fallback), change-stream permissions (the API falls back to polling and says so),
+`collMod` permissions on M0 (validators are created with the collection; `collMod` only
+runs on re-setup).
 
 ## Actual demo numbers (mock model, from tests)
 
@@ -62,3 +58,4 @@ Plain HTML + JS in one file, no build step.
 - 31 Oct 01:00 IST: Step 2 done: `guard/checks.py` (7 check types), `guard/seed.py`, `guard seed` CLI, data files (3 prompt versions, 12 test cases). 49 tests green.
 - 31 Oct 01:45 IST: Steps 3+4 done: mock model, runner (resume, timeouts, duplicates), comparison pipeline, stats with $percentile + Python fallback, verdict rules, CLI `run/compare/history/reset/demo-duplicate/demo-incomplete`, failure-case helpers in `guard/demo.py`. 107 tests green.
 - 31 Oct 02:15 IST: Step 5 done: `guard/api.py` (REST + SSE via change streams with polling fallback, background runs, auto schema+seed on startup). 116 tests green.
+- 31 Oct 03:00 IST: Step 6 dashboard (live table, verdict banner, auto-compare, failure buttons, query plan), `guard explain` + `/api/explain`, deploy config (Render/Docker/Procfile), GitHub Actions (tests + prompt-guard gate example), README, DEPLOY, DEMO_SCRIPT, PPT_OUTLINE. 118 tests green. Dashboard verified in Chromium (desktop + 390px mobile).

@@ -226,3 +226,36 @@ def reset_runs(db: Database) -> None:
     cases. Used before a demo to start from a clean history."""
     for name in (config.EVAL_RUNS, config.EVAL_RESULTS, config.COMPARISONS):
         db[name].delete_many({})
+
+
+def _plan_stages(plan: dict) -> list[dict]:
+    """Flatten a winningPlan / executionStages tree into a list, outermost first."""
+    stages = []
+    while plan:
+        stages.append({k: plan[k] for k in ("stage", "indexName", "keyPattern") if k in plan})
+        plan = plan.get("inputStage") or (plan.get("inputStages") or [None])[0]
+    return stages
+
+
+def explain_run_lookup(db: Database, run_id: str) -> dict:
+    """Explain the query the tool runs most ("all results of run X") with executionStats.
+    Proves the unique {run_id, test_case_id} index is used (IXSCAN, not COLLSCAN)."""
+    if is_mongomock(db):
+        return {"available": False, "reason": "explain needs a real MongoDB server"}
+    out = db.command("explain", {"find": config.EVAL_RESULTS, "filter": {"run_id": run_id}},
+                     verbosity="executionStats")
+    winning = out.get("queryPlanner", {}).get("winningPlan", {})
+    winning = winning.get("queryPlan", winning)  # 7.0+ slot-based engine nests the plan
+    stats = out.get("executionStats", {})
+    stages = _plan_stages(winning)
+    return {
+        "available": True,
+        "filter": {"run_id": run_id},
+        "stages": stages,
+        "uses_index": any(s["stage"] == "IXSCAN" for s in stages),
+        "index": next((s.get("indexName") for s in stages if s.get("indexName")), None),
+        "n_returned": stats.get("nReturned"),
+        "keys_examined": stats.get("totalKeysExamined"),
+        "docs_examined": stats.get("totalDocsExamined"),
+        "time_ms": stats.get("executionTimeMillis"),
+    }

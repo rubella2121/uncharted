@@ -102,6 +102,12 @@ def run_detail(run_id: str):
     return _json({"run": run, "results": list(results)})
 
 
+@app.get("/api/explain/{run_id}")
+def explain(run_id: str):
+    """Query plan for "all results of run X": shows the index in use and docs examined."""
+    return dbmod.explain_run_lookup(get_db(), run_id)
+
+
 @app.get("/api/comparisons")
 def comparisons(limit: int = 10):
     docs = get_db()[config.COMPARISONS].find({"project_id": config.PROJECT_ID}) \

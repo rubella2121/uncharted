@@ -1,0 +1,615 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prompt Regression Guard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0b1210; --panel: #111b18; --panel-2: #16231f; --border: #22332e;
+  --text: #e3ece8; --muted: #8aa39a; --accent: #00ed64; --accent-dim: #0b3d24;
+  --pass: #2fd47a; --pass-bg: #0f2e1f; --fail: #ff5d5d; --fail-bg: #3a1414;
+  --warn: #ffb547; --warn-bg: #3a2a0d; --gray: #8f9aa6; --gray-bg: #232a31;
+  --info: #b48cff; --info-bg: #2a1f40;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+  --radius: 12px;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text);
+  font: 14px/1.5 Inter, system-ui, sans-serif; }
+button, select, input { font: inherit; color: inherit; }
+code, .mono { font-family: var(--mono); font-size: 12.5px; }
+a { color: var(--accent); }
+
+header { display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  padding: 18px 24px; border-bottom: 1px solid var(--border); background: var(--panel); }
+.logo { width: 34px; height: 34px; border-radius: 9px; background: var(--accent-dim);
+  display: grid; place-items: center; color: var(--accent); font-weight: 700; }
+header h1 { font-size: 18px; margin: 0; }
+header p { margin: 0; color: var(--muted); font-size: 13px; }
+.status { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px;
+  border-radius: 999px; background: var(--panel-2); border: 1px solid var(--border);
+  font-size: 12px; color: var(--muted); white-space: nowrap; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gray); }
+.dot.on { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+.dot.off { background: var(--fail); }
+.dot.mid { background: var(--warn); }
+
+main { display: grid; grid-template-columns: 320px 1fr; gap: 20px; padding: 20px 24px;
+  max-width: 1500px; margin: 0 auto; }
+@media (max-width: 960px) { main { grid-template-columns: 1fr; padding: 16px; } header { padding: 14px 16px; } }
+.col { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 16px; min-width: 0; }
+.card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted);
+  margin: 0 0 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+#run-title { overflow-wrap: anywhere; min-width: 0; }
+.card h2 .right { margin-left: auto; text-transform: none; letter-spacing: 0; }
+label.field { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
+select { width: 100%; background: var(--panel-2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 10px; }
+.btn { border: 1px solid var(--border); background: var(--panel-2); border-radius: 8px;
+  padding: 8px 14px; cursor: pointer; font-weight: 500; }
+.btn:hover:not(:disabled) { border-color: var(--accent); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn.primary { background: var(--accent); color: #04140b; border-color: var(--accent); font-weight: 600; }
+.btn.block { width: 100%; margin-top: 12px; }
+.btn.small { padding: 5px 10px; font-size: 12.5px; }
+.hint { color: var(--muted); font-size: 12px; margin: 6px 0 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 6px;
+  background: var(--panel-2); border: 1px solid var(--border); cursor: pointer; font-size: 12px;
+  font-family: var(--mono); user-select: none; }
+.chip input { display: none; }
+.chip.on { background: var(--gray-bg); border-color: var(--gray); color: #fff; }
+.check-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 13px; }
+
+.runs { list-style: none; margin: 0; padding: 0; max-height: 300px; overflow: auto; }
+.runs li { display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 8px;
+  cursor: pointer; border: 1px solid transparent; }
+.runs li:hover { background: var(--panel-2); }
+.runs li.sel { border-color: var(--accent); background: var(--panel-2); }
+.runs .v { font-weight: 600; font-family: var(--mono); width: 26px; }
+.runs .meta { color: var(--muted); font-size: 12px; flex: 1; min-width: 0; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; }
+
+.tag { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11.5px;
+  font-weight: 600; letter-spacing: .03em; white-space: nowrap; }
+.tag.pass { background: var(--pass-bg); color: var(--pass); }
+.tag.fail { background: var(--fail-bg); color: var(--fail); }
+.tag.timeout, .tag.error, .tag.unverified { background: var(--gray-bg); color: var(--gray); }
+.tag.running { background: var(--info-bg); color: var(--info); }
+.tag.regressed { background: var(--fail-bg); color: var(--fail); }
+.tag.fixed { background: var(--pass-bg); color: var(--pass); }
+.tag.still_failing { background: var(--warn-bg); color: var(--warn); }
+.tag.still_passing { background: var(--panel-2); color: var(--muted); }
+
+/* verdict */
+.verdict { border-radius: var(--radius); padding: 18px 20px; border: 1px solid var(--border);
+  display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; align-items: center; }
+.verdict .icon { font-size: 30px; grid-row: span 2; width: 44px; text-align: center; }
+.verdict .title { font-size: 22px; font-weight: 700; letter-spacing: .01em; }
+.verdict .sub { color: var(--muted); font-size: 13px; }
+.verdict ul { grid-column: 1 / -1; margin: 10px 0 0; padding-left: 20px; }
+.verdict.SAFE { background: var(--pass-bg); border-color: var(--pass); } .verdict.SAFE .title { color: var(--pass); }
+.verdict.RISKY { background: var(--warn-bg); border-color: var(--warn); } .verdict.RISKY .title { color: var(--warn); }
+.verdict.NOT_SAFE { background: var(--fail-bg); border-color: var(--fail); } .verdict.NOT_SAFE .title { color: var(--fail); }
+.verdict.INCONCLUSIVE { background: var(--info-bg); border-color: var(--info); } .verdict.INCONCLUSIVE .title { color: var(--info); }
+.verdict.empty { color: var(--muted); display: block; text-align: center; padding: 26px; }
+@keyframes pop { from { transform: scale(.97); opacity: .4; } to { transform: none; opacity: 1; } }
+.verdict.fresh { animation: pop .35s ease-out; }
+
+.metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px; }
+@media (max-width: 560px) { .metrics { grid-template-columns: 1fr; } }
+.metric { background: var(--panel-2); border-radius: 10px; padding: 10px 12px; }
+.metric .k { color: var(--muted); font-size: 12px; }
+.metric .val { font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.metric .delta { font-size: 12.5px; font-family: var(--mono); }
+.up-bad { color: var(--fail); } .down-good { color: var(--pass); } .flat { color: var(--muted); }
+.grid12 { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 6px; margin-top: 14px; }
+.cell { border-radius: 8px; padding: 6px 8px; font-size: 12px; background: var(--panel-2);
+  border: 1px solid var(--border); }
+.cell b { font-family: var(--mono); display: block; }
+.cell.regressed { border-color: var(--fail); background: var(--fail-bg); }
+.cell.fixed { border-color: var(--pass); background: var(--pass-bg); }
+.cell.unverified { border-style: dashed; border-color: var(--gray); }
+.cell.still_failing { border-color: var(--warn); }
+.compare-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; align-items: end; }
+@media (max-width: 560px) { .compare-row { grid-template-columns: 1fr; } }
+.compare-row label.field { margin-top: 0; }
+.warnings { color: var(--warn); font-size: 12.5px; margin-top: 8px; }
+
+/* results */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--muted); font-weight: 600; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+td.num { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 12.5px; white-space: nowrap; }
+tr.res { cursor: pointer; }
+tr.res:hover td { background: var(--panel-2); }
+tr.pending td { color: var(--muted); opacity: .55; }
+tr.row-fail td:first-child { box-shadow: inset 3px 0 var(--fail); }
+tr.row-pass td:first-child { box-shadow: inset 3px 0 var(--pass); }
+tr.row-gray td:first-child { box-shadow: inset 3px 0 var(--gray); }
+@keyframes flash { from { background: var(--accent-dim); } to { background: transparent; } }
+tr.new td { animation: flash 1.2s ease-out; }
+.tc-name { font-weight: 500; } .tc-risk { color: var(--muted); font-size: 12px; }
+.detail { color: var(--fail); font-size: 12.5px; }
+.detail.gray { color: var(--gray); }
+tr.expand td { background: var(--panel-2); }
+pre.out { white-space: pre-wrap; word-break: break-word; margin: 0; font-family: var(--mono);
+  font-size: 12px; color: var(--text); }
+.checklist { margin: 8px 0 0; padding: 0; list-style: none; font-size: 12.5px; }
+.checklist li { padding: 2px 0; }
+.progress { height: 4px; background: var(--panel-2); border-radius: 4px; overflow: hidden; margin-bottom: 12px; }
+.progress div { height: 100%; background: var(--accent); width: 0; transition: width .3s; }
+.empty-state { color: var(--muted); text-align: center; padding: 30px 10px; }
+
+.log { font-family: var(--mono); font-size: 12px; max-height: 220px; overflow: auto;
+  background: var(--bg); border-radius: 8px; padding: 8px 10px; border: 1px solid var(--border); }
+.log div { padding: 1px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.log .t { color: var(--muted); }
+.log .ok { color: var(--pass); } .log .bad { color: var(--fail); } .log .ev { color: var(--info); }
+.demo-btns { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.demo-btns .btn { text-align: left; }
+.demo-btns .btn small { display: block; color: var(--muted); font-weight: 400; font-size: 12px; }
+details.mongo summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+details.mongo ul { padding-left: 18px; margin: 8px 0 0; font-size: 13px; }
+details.mongo li { margin: 4px 0; }
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--fail-bg);
+  border: 1px solid var(--fail); color: #fff; padding: 10px 16px; border-radius: 10px; display: none;
+  max-width: calc(100% - 32px); z-index: 10; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">PG</div>
+  <div>
+    <h1>Prompt Regression Guard</h1>
+    <p>Is this prompt or model change safe to ship? &nbsp;·&nbsp; project <code id="project">supportbot</code></p>
+  </div>
+  <div class="status">
+    <span class="pill"><span class="dot" id="db-dot"></span><span id="db-label">connecting…</span></span>
+    <span class="pill"><span class="dot" id="live-dot"></span><span id="live-label">live: connecting</span></span>
+  </div>
+</header>
+
+<main>
+  <div class="col">
+    <section class="card">
+      <h2>1 · Run the test set</h2>
+      <label class="field" for="version">Prompt version</label>
+      <select id="version"></select>
+      <p class="hint" id="version-desc"></p>
+      <label class="field">Simulate timeouts (failure case)</label>
+      <div class="chips" id="timeouts"></div>
+      <label class="check-row"><input type="checkbox" id="auto-compare" checked>
+        Compare with baseline when finished</label>
+      <button class="btn primary block" id="run-btn">Run evaluation</button>
+    </section>
+
+    <section class="card">
+      <h2>Run history <span class="right"><button class="btn small" id="refresh-btn" title="Reload">↻</button></span></h2>
+      <ul class="runs" id="runs"><li class="empty-state">No runs yet</li></ul>
+    </section>
+
+    <section class="card">
+      <h2>Failure cases</h2>
+      <div class="demo-btns">
+        <button class="btn" id="dup-btn">Re-send a stored result<small>Stable _id → duplicate ignored</small></button>
+        <button class="btn" id="inc-btn">Send result without run_id<small>$jsonSchema validator rejects it</small></button>
+        <button class="btn" id="reset-btn">Reset run history<small>Keeps prompts and test cases</small></button>
+      </div>
+    </section>
+
+    <section class="card">
+      <details class="mongo">
+        <summary>How MongoDB is used</summary>
+        <ul>
+          <li><b>Stable IDs:</b> result <code>_id</code> = hash(run_id, test_case_id); unique index on <code>{run_id, test_case_id}</code> makes re-ingestion safe.</li>
+          <li><b>Schema validation:</b> strict envelope (<code>run_id</code>, <code>status</code>, <code>passed</code>, <code>timestamp</code>…); <code>output</code> and <code>checks</code> stay flexible.</li>
+          <li><b>Aggregation:</b> <code>$group</code> + <code>$switch</code> classifies each test case; <code>$percentile</code> computes p95 latency.</li>
+          <li><b>Change streams:</b> this page updates as MongoDB writes results; no polling.</li>
+          <li><b>Indexes:</b> results by run, latest results per version, recent runs.</li>
+        </ul>
+        <button class="btn small" id="explain-btn" style="margin-top:10px">Show query plan for selected run</button>
+        <div id="explain-out" class="hint mono" style="white-space:pre-wrap"></div>
+      </details>
+    </section>
+  </div>
+
+  <div class="col">
+    <section class="card">
+      <h2>2 · Release verdict</h2>
+      <div class="compare-row">
+        <div><label class="field" for="baseline">Baseline</label><select id="baseline"></select></div>
+        <div><label class="field" for="candidate">Candidate</label><select id="candidate"></select></div>
+        <button class="btn primary" id="compare-btn">Compare</button>
+      </div>
+      <div style="margin-top:16px" id="verdict-area">
+        <div class="verdict empty">Run two versions, then compare them to get a verdict.</div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Results <span id="run-title" class="mono" style="text-transform:none;letter-spacing:0"></span>
+        <span class="right" id="run-summary"></span></h2>
+      <div class="progress"><div id="progress-bar"></div></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Test case</th><th>Result</th><th>Why</th><th style="text-align:right">Latency</th><th style="text-align:right">Cost</th></tr></thead>
+          <tbody id="results"><tr><td colspan="5" class="empty-state">Select or start a run</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Live event log <span class="right hint" style="margin:0" id="log-src">MongoDB change stream</span></h2>
+      <div class="log" id="log"></div>
+    </section>
+  </div>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+const state = {
+  versions: [], testCases: [], runs: new Map(), results: new Map(),  // run_id -> Map(tc -> doc)
+  selectedRun: null, expanded: new Set(), myRuns: new Set(), comparison: null,
+  mode: "connecting", pollTimer: null,
+};
+
+async function api(path, opts = {}) {
+  const res = await fetch(path, { headers: { "Content-Type": "application/json" }, ...opts });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) throw new Error((body && body.detail) || `HTTP ${res.status}`);
+  return body;
+}
+function toast(msg) {
+  const t = $("toast"); t.textContent = msg; t.style.display = "block";
+  clearTimeout(toast.timer); toast.timer = setTimeout(() => (t.style.display = "none"), 4500);
+}
+function log(html, cls = "") {
+  const el = $("log"), line = document.createElement("div");
+  line.innerHTML = `<span class="t">${new Date().toLocaleTimeString()}</span> <span class="${cls}">${html}</span>`;
+  el.prepend(line);
+  while (el.children.length > 80) el.lastChild.remove();
+}
+const fmtTime = (iso) => iso ? new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "";
+const fmtCost = (c) => c == null ? "—" : "$" + Number(c).toFixed(6);
+const fmtPct = (p) => (p > 0 ? "+" : "") + Math.round(p) + "%";
+
+/* ---------- rendering ---------- */
+
+function renderVersions() {
+  const sel = $("version");
+  sel.innerHTML = state.versions.map((v) =>
+    `<option value="${esc(v.version)}">${esc(v.version)} · ${esc(v.model)}</option>`).join("");
+  const showDesc = () => {
+    const v = state.versions.find((x) => x.version === sel.value);
+    $("version-desc").textContent = v ? `${v.description || ""} (${v.prompt_text.split(/\s+/).length}-word prompt)` : "";
+  };
+  sel.onchange = showDesc; showDesc();
+  $("timeouts").innerHTML = state.testCases.map((tc) =>
+    `<label class="chip" title="${esc(tc.name)}"><input type="checkbox" value="${esc(tc._id)}">${esc(tc._id)}</label>`).join("");
+  $("timeouts").querySelectorAll("input").forEach((i) =>
+    i.onchange = () => i.parentElement.classList.toggle("on", i.checked));
+}
+
+function sortedRuns() {
+  return [...state.runs.values()].sort((a, b) => (b.started_at || "").localeCompare(a.started_at || ""));
+}
+
+function runLabel(r) {
+  const s = r.summary;
+  const score = s ? `${s.passed}/${s.total}` : "…";
+  return `${r.prompt_version} · ${fmtTime(r.started_at)} · ${score}${s && s.errors ? ` · ${s.errors} timeout` : ""}`;
+}
+
+function renderRuns() {
+  const list = sortedRuns();
+  $("runs").innerHTML = list.length ? list.map((r) => {
+    const s = r.summary;
+    const tag = r.status === "running" ? `<span class="tag running">running</span>`
+      : r.status === "failed" ? `<span class="tag fail">failed</span>`
+      : `<span class="tag ${s && s.errors ? "timeout" : s && s.passed === s.total ? "pass" : "fail"}">${s ? s.passed + "/" + s.total : "?"}</span>`;
+    return `<li data-id="${esc(r._id)}" class="${r._id === state.selectedRun ? "sel" : ""}">
+      <span class="v">${esc(r.prompt_version)}</span>
+      <span class="meta">${fmtTime(r.started_at)}${s && s.errors ? ` · ${s.errors} timeout` : ""}<br><span class="mono">${esc(r._id)}</span></span>${tag}</li>`;
+  }).join("") : `<li class="empty-state">No runs yet</li>`;
+  $("runs").querySelectorAll("li[data-id]").forEach((li) => li.onclick = () => selectRun(li.dataset.id));
+
+  // compare selectors: finished runs only
+  const finished = list.filter((r) => r.status === "completed" || r.status === "completed_with_errors");
+  for (const id of ["baseline", "candidate"]) {
+    const sel = $(id), prev = sel.value;
+    sel.innerHTML = finished.length ? finished.map((r) =>
+      `<option value="${esc(r._id)}">${esc(runLabel(r))}</option>`).join("") : `<option value="">no finished runs</option>`;
+    if (finished.some((r) => r._id === prev)) sel.value = prev;
+  }
+  if (!$("baseline").dataset.touched) {  // default baseline: newest v1 run, else oldest run
+    const base = finished.find((r) => r.prompt_version === "v1") || finished[finished.length - 1];
+    if (base) $("baseline").value = base._id;
+  }
+  if (!$("candidate").dataset.touched && finished[0]) $("candidate").value = finished[0]._id;
+  $("compare-btn").disabled = finished.length < 2;
+}
+
+function renderResults() {
+  const run = state.runs.get(state.selectedRun);
+  const body = $("results");
+  if (!run) { body.innerHTML = `<tr><td colspan="5" class="empty-state">Select or start a run</td></tr>`; return; }
+  const results = state.results.get(run._id) || new Map();
+  $("run-title").textContent = `${run.prompt_version} · ${run._id}`;
+  const passed = [...results.values()].filter((r) => r.passed).length;
+  const errors = [...results.values()].filter((r) => r.status !== "ok").length;
+  const total = state.testCases.length || run.test_set_size || 12;
+  $("run-summary").innerHTML = `<span class="tag ${run.status === "running" ? "running" : "pass"}">${esc(run.status)}</span>
+    <span class="pill">${passed}/${results.size} passed${errors ? ` · ${errors} timeout/error` : ""}</span>`;
+  $("progress-bar").style.width = `${Math.min(100, (results.size / total) * 100)}%`;
+
+  const rows = [];
+  for (const tc of state.testCases) {
+    const r = results.get(tc._id);
+    if (!r) {
+      rows.push(`<tr class="pending"><td><div class="tc-name">${esc(tc._id)} · ${esc(tc.name)}</div><div class="tc-risk">${esc(tc.risk || "")}</div></td>
+        <td>${run.status === "running" ? "waiting…" : "—"}</td><td></td><td class="num"></td><td class="num"></td></tr>`);
+      continue;
+    }
+    const ok = r.status === "ok";
+    const tag = !ok ? `<span class="tag ${r.status}">${r.status.toUpperCase()}</span>`
+      : r.passed ? `<span class="tag pass">PASS</span>` : `<span class="tag fail">FAIL</span>`;
+    const why = !ok ? `<span class="detail gray">${esc(r.error)}</span>`
+      : (r.checks || []).filter((c) => !c.passed).map((c) => `<div class="detail">${esc(c.type)}: ${esc(c.detail)}</div>`).join("");
+    const cls = !ok ? "row-gray" : r.passed ? "row-pass" : "row-fail";
+    rows.push(`<tr class="res ${cls} ${r._fresh ? "new" : ""}" data-tc="${esc(tc._id)}">
+      <td><div class="tc-name">${esc(tc._id)} · ${esc(tc.name)}</div><div class="tc-risk">${esc(tc.risk || "")}</div></td>
+      <td>${tag}</td><td>${why}</td>
+      <td class="num">${ok ? r.latency_ms + " ms" : "—"}</td><td class="num">${fmtCost(r.cost_usd)}</td></tr>`);
+    r._fresh = false;
+    if (state.expanded.has(tc._id)) {
+      const checks = (r.checks || []).map((c) =>
+        `<li>${c.passed ? "✅" : "❌"} <code>${esc(c.type)}</code> ${esc(c.detail)}</li>`).join("");
+      rows.push(`<tr class="expand"><td colspan="5"><div class="hint" style="margin:0 0 4px">Input</div>
+        <pre class="out">${esc(tc.input)}</pre><div class="hint" style="margin:10px 0 4px">Model output</div>
+        <pre class="out">${esc(r.output ?? "(no output: " + r.status + ")")}</pre><ul class="checklist">${checks}</ul>
+        <div class="hint mono">_id ${esc(r._id)} · ${r.tokens_in ?? "—"} in / ${r.tokens_out ?? "—"} out tokens</div></td></tr>`);
+    }
+  }
+  body.innerHTML = rows.join("");
+  body.querySelectorAll("tr.res").forEach((tr) => tr.onclick = () => {
+    const id = tr.dataset.tc;
+    state.expanded.has(id) ? state.expanded.delete(id) : state.expanded.add(id);
+    renderResults();
+  });
+}
+
+const VERDICT = {
+  SAFE: { icon: "✅", title: "SAFE TO SHIP", sub: "No regressions; latency and cost within limits." },
+  RISKY: { icon: "⚠️", title: "RISKY", sub: "Quality held, but it is noticeably slower or more expensive. Decide consciously." },
+  NOT_SAFE: { icon: "❌", title: "NOT SAFE TO SHIP", sub: "At least one test case that passed before now fails." },
+  INCONCLUSIVE: { icon: "❔", title: "INCONCLUSIVE", sub: "Some cases could not be verified. Missing data cannot prove safety; re-run first." },
+};
+
+function deltaCls(p) { return p > 0.5 ? "up-bad" : p < -0.5 ? "down-good" : "flat"; }
+
+function renderVerdict(c, fresh = false) {
+  const area = $("verdict-area");
+  if (!c) { area.innerHTML = `<div class="verdict empty">Run two versions, then compare them to get a verdict.</div>`; return; }
+  const v = VERDICT[c.verdict], m = c.metrics, b = m.baseline, n = m.candidate;
+  const counts = Object.entries(c.counts).filter(([, x]) => x > 0)
+    .map(([k, x]) => `<span class="tag ${k}">${x} ${k.replace("_", " ")}</span>`).join(" ");
+  const cells = c.rows.map((r) => {
+    const tc = state.testCases.find((t) => t._id === r.test_case_id);
+    return `<div class="cell ${r.change}" title="${esc(tc ? tc.name : "")}"><b>${esc(r.test_case_id)}</b>${esc(r.change.replace("_", " "))}</div>`;
+  }).join("");
+  area.innerHTML = `
+    <div class="verdict ${c.verdict} ${fresh ? "fresh" : ""}">
+      <div class="icon">${v.icon}</div><div class="title">${v.title}</div>
+      <div class="sub">${esc(c.baseline_version)} → ${esc(c.candidate_version)} · ${v.sub}</div>
+      <ul>${c.reasons.map((r) => `<li>${esc(r)}</li>`).join("")}</ul>
+    </div>
+    ${c.warnings && c.warnings.length ? `<div class="warnings">⚠ ${c.warnings.map(esc).join("; ")}</div>` : ""}
+    <div style="margin-top:12px" class="chips">${counts}</div>
+    <div class="metrics">
+      <div class="metric"><div class="k">Pass rate</div><div class="val">${b.passed}/${b.total} → ${n.passed}/${n.total}</div>
+        <div class="delta flat">${n.errors ? n.errors + " unverified" : "&nbsp;"}</div></div>
+      <div class="metric"><div class="k">p95 latency</div><div class="val">${b.p95_ms ?? "—"} → ${n.p95_ms ?? "—"} ms</div>
+        <div class="delta ${deltaCls(m.p95_change_pct)}">${fmtPct(m.p95_change_pct)}</div></div>
+      <div class="metric"><div class="k">Total cost</div><div class="val">${fmtCost(b.total_cost)} → ${fmtCost(n.total_cost)}</div>
+        <div class="delta ${deltaCls(m.cost_change_pct)}">${fmtPct(m.cost_change_pct)}</div></div>
+    </div>
+    <div class="grid12">${cells}</div>
+    <p class="hint">CI exit code: <code>${c.verdict === "SAFE" ? 0 : c.verdict === "NOT_SAFE" ? 1 : 2}</code> · comparison <code>${esc(c._id)}</code></p>`;
+}
+
+function setLive(mode, detail = "") {
+  state.mode = mode;
+  $("live-dot").className = "dot " + (mode === "change_stream" ? "on" : mode === "polling" ? "mid" : "");
+  $("live-label").textContent = mode === "change_stream" ? "live: change stream" : mode === "polling" ? "live: polling" : "live: connecting";
+  $("live-label").title = detail;
+  $("log-src").textContent = mode === "polling" ? "polling (change stream unavailable)" : "MongoDB change stream";
+}
+
+/* ---------- data flow ---------- */
+
+function upsertRun(run) {
+  const prev = state.runs.get(run._id);
+  state.runs.set(run._id, run);
+  if (!prev && state.myRuns.has(run._id)) selectRun(run._id, false);
+  renderRuns();  // first, so a just-finished run is selectable in the compare dropdowns
+  if (run._id === state.selectedRun) renderResults();
+  const finished = prev && prev.status === "running" && run.status !== "running";
+  if (finished) {
+    const s = run.summary || {};
+    log(`run ${esc(run._id)} ${esc(run.status)}: ${s.passed}/${s.total} passed`, "ok");
+    if (state.myRuns.has(run._id)) onMyRunFinished(run);
+  }
+}
+
+function addResult(doc, fresh = true) {
+  if (!state.results.has(doc.run_id)) state.results.set(doc.run_id, new Map());
+  const m = state.results.get(doc.run_id);
+  if (m.has(doc.test_case_id)) return false;  // de-duplicate (REST + stream overlap)
+  doc._fresh = fresh;
+  m.set(doc.test_case_id, doc);
+  return true;
+}
+
+async function selectRun(runId, scroll = true) {
+  state.selectedRun = runId; state.expanded.clear();
+  renderRuns(); renderResults();
+  try {
+    const d = await api(`/api/runs/${encodeURIComponent(runId)}`);
+    state.runs.set(d.run._id, d.run);
+    d.results.forEach((r) => addResult(r, false));
+    renderRuns(); renderResults();
+  } catch (e) { toast(e.message); }
+}
+
+async function loadAll() {
+  const [runs, latest] = await Promise.all([api("/api/runs?limit=30"), api("/api/comparisons/latest")]);
+  runs.forEach((r) => state.runs.set(r._id, r));
+  renderRuns();
+  if (latest && !state.comparison) { state.comparison = latest; renderVerdict(latest); }
+  if (!state.selectedRun && runs[0]) await selectRun(runs[0]._id);
+}
+
+async function onMyRunFinished(run) {
+  if (!$("auto-compare").checked || run.status === "failed") return;
+  const base = $("baseline").value;
+  if (!base || base === run._id) return;
+  $("candidate").value = run._id;
+  await doCompare();
+}
+
+async function doCompare() {
+  const baseline = $("baseline").value, candidate = $("candidate").value;
+  if (!baseline || !candidate) return;
+  if (baseline === candidate) return toast("Pick two different runs");
+  $("compare-btn").disabled = true;
+  try {
+    const c = await api("/api/compare", { method: "POST", body: JSON.stringify({ baseline, candidate }) });
+    state.comparison = c; renderVerdict(c, true);
+    log(`verdict ${c.baseline_version}→${c.candidate_version}: <b>${c.verdict}</b>`, c.verdict === "SAFE" ? "ok" : "bad");
+  } catch (e) { toast(e.message); }
+  finally { $("compare-btn").disabled = false; }
+}
+
+async function startRun() {
+  const version = $("version").value;
+  const simulate_timeouts = [...$("timeouts").querySelectorAll("input:checked")].map((i) => i.value);
+  $("run-btn").disabled = true;
+  try {
+    const r = await api("/api/runs", { method: "POST", body: JSON.stringify({ version, simulate_timeouts }) });
+    state.myRuns.add(r.run_id);
+    log(`started run ${esc(r.run_id)}${simulate_timeouts.length ? " (timeouts: " + simulate_timeouts.join(",") + ")" : ""}`, "ev");
+    state.runs.set(r.run_id, { _id: r.run_id, prompt_version: version, status: "running", started_at: new Date().toISOString() });
+    await selectRun(r.run_id);
+    $("timeouts").querySelectorAll("input:checked").forEach((i) => { i.checked = false; i.parentElement.classList.remove("on"); });
+  } catch (e) { toast(e.message); }
+  finally { setTimeout(() => ($("run-btn").disabled = false), 800); }
+}
+
+function connectStream() {
+  const es = new EventSource("/api/stream");
+  es.addEventListener("mode", (e) => {
+    const d = JSON.parse(e.data);
+    setLive(d.mode, d.reason || "");
+    log(d.mode === "change_stream" ? "subscribed to MongoDB change stream" : `change stream unavailable, polling (${esc(d.reason || "")})`, "ev");
+    if (d.mode === "polling") { es.close(); startPolling(); }
+  });
+  es.addEventListener("result", (e) => {
+    const doc = JSON.parse(e.data);
+    const fresh = addResult(doc, true);
+    if (!fresh) return;
+    const mark = doc.status !== "ok" ? `<span class="bad">${doc.status}</span>` : doc.passed ? `<span class="ok">pass</span>` : `<span class="bad">fail</span>`;
+    log(`<span class="ev">insert</span> eval_results ${esc(doc.test_case_id)} ${mark} <span class="t">${esc(doc._id)}</span>`);
+    if (doc.run_id === state.selectedRun) renderResults();
+  });
+  es.addEventListener("run", (e) => upsertRun(JSON.parse(e.data)));
+  es.addEventListener("comparison", (e) => {
+    const c = JSON.parse(e.data);
+    if (!state.comparison || state.comparison._id !== c._id || state.comparison.created_at !== c.created_at) {
+      state.comparison = c; renderVerdict(c, true);
+    }
+  });
+  es.onerror = () => { if (state.mode !== "polling") setLive("connecting"); };
+}
+
+function startPolling() {
+  if (state.pollTimer) return;
+  state.pollTimer = setInterval(async () => {
+    try {
+      const runs = await api("/api/runs?limit=30");
+      runs.forEach(upsertRun);
+      const sel = state.runs.get(state.selectedRun);
+      if (sel) {
+        const d = await api(`/api/runs/${encodeURIComponent(sel._id)}`);
+        let changed = false;
+        d.results.forEach((r) => { changed = addResult(r, true) || changed; });
+        if (changed) renderResults();
+      }
+    } catch (_) { /* transient */ }
+  }, 1000);
+}
+
+async function demo(path, describe) {
+  try {
+    const r = await api(path, { method: "POST" });
+    log(describe(r), "ev");
+    return r;
+  } catch (e) { toast(e.message); }
+}
+
+async function init() {
+  try {
+    const h = await api("/api/health");
+    $("db-dot").className = "dot " + (h.ok ? "on" : "off");
+    $("db-label").textContent = h.ok ? `MongoDB ${h.mongodb}` : "database unavailable";
+    $("db-label").title = h.error || "";
+    if (h.project_id) $("project").textContent = h.project_id;
+    if (!h.ok) { toast("Database unavailable: " + h.error); return; }
+    [state.versions, state.testCases] = await Promise.all([api("/api/versions"), api("/api/test-cases")]);
+    renderVersions();
+    await loadAll();      // 1) current state over REST
+    connectStream();      // 2) then live updates; addResult() de-duplicates by test case
+  } catch (e) { toast(e.message); }
+}
+
+$("run-btn").onclick = startRun;
+$("compare-btn").onclick = doCompare;
+$("refresh-btn").onclick = () => loadAll().catch((e) => toast(e.message));
+["baseline", "candidate"].forEach((id) => $(id).addEventListener("change", () => ($(id).dataset.touched = "1")));
+$("dup-btn").onclick = () => demo("/api/demo/duplicate", (r) =>
+  `re-sent ${esc(r.result_id)} (${esc(r.test_case_id)}) → <b>${esc(r.outcome)}</b>, results in run: ${r.count_before} → ${r.count_after}`);
+$("inc-btn").onclick = () => demo("/api/demo/incomplete", (r) =>
+  `result without ${esc(r.missing_field)} → <b>${esc(r.outcome)}</b>${r.outcome === "rejected" ? " by $jsonSchema validator (code 121)" : ""}`);
+$("explain-btn").onclick = async () => {
+  if (!state.selectedRun) return toast("Select a run first");
+  try {
+    const p = await api(`/api/explain/${encodeURIComponent(state.selectedRun)}`);
+    $("explain-out").textContent = !p.available ? p.reason :
+      `find({run_id: "${p.filter.run_id}"})\nplan: ${p.stages.map((x) => x.stage).join(" ← ")}\n` +
+      `index: ${p.index}\nexamined ${p.keys_examined} keys, ${p.docs_examined} docs → ${p.n_returned} returned` +
+      `\n${p.uses_index ? "✅ IXSCAN: index used" : "❌ COLLSCAN: no index"}`;
+  } catch (e) { toast(e.message); }
+};
+$("reset-btn").onclick = async () => {
+  if (!confirm("Delete all runs, results and comparisons?")) return;
+  const r = await demo("/api/demo/reset", () => "run history cleared");
+  if (r) { state.runs.clear(); state.results.clear(); state.selectedRun = null; state.comparison = null;
+    ["baseline", "candidate"].forEach((id) => delete $(id).dataset.touched);
+    renderRuns(); renderResults(); renderVerdict(null); }
+};
+init();
+</script>
+</body>
+</html>

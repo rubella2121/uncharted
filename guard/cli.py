@@ -1,6 +1,6 @@
 """Command-line interface: `guard <command>`.
 
-Commands: setup, doctor, seed, run, compare, history, reset, demo-duplicate, demo-incomplete
+Commands: setup, doctor, seed, run, compare, history, explain, reset, demo-duplicate, demo-incomplete
 """
 import typer
 from pymongo.errors import DuplicateKeyError, WriteError
@@ -206,6 +206,26 @@ def history(limit: int = typer.Option(10, help="How many runs to show")):
         s = r.get("summary", {})
         typer.echo(f"  {r['_id']:28} {r['prompt_version']:4} {r['status']:22} "
                    f"{s.get('passed', '-')}/{s.get('total', '-')}")
+
+
+@app.command()
+def explain(run: str = typer.Argument(..., help="Run ID or version (latest run)")):
+    """Show the query plan for "all results of a run" (IXSCAN = index used)."""
+    database = dbmod.get_db()
+    try:
+        run_id = cmp.resolve_run(database, run)["_id"]
+    except ValueError as e:
+        _fail(str(e))
+    plan = dbmod.explain_run_lookup(database, run_id)
+    if not plan["available"]:
+        _fail(plan["reason"])
+    typer.echo(f"  query     db.eval_results.find({{run_id: '{run_id}'}})")
+    typer.echo(f"  plan      {' <- '.join(s['stage'] for s in plan['stages'])}")
+    typer.echo(f"  index     {plan['index']}")
+    typer.echo(f"  examined  {plan['keys_examined']} keys, {plan['docs_examined']} docs "
+               f"-> {plan['n_returned']} returned in {plan['time_ms']} ms")
+    typer.secho("  IXSCAN: index used" if plan["uses_index"] else "  COLLSCAN: no index!",
+                fg=typer.colors.GREEN if plan["uses_index"] else typer.colors.RED, bold=True)
 
 
 @app.command()
