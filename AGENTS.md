@@ -60,7 +60,7 @@ guard/mock_model.py  call_model(prompt_version, test_case, simulate_timeout) + s
 guard/runner.py      start_run(), run_eval(db, version, simulate_timeouts=, run_id=, on_result=, delay_s=)
 guard/compare.py     compare_pipeline(), run_stats(), decide(), compare_runs(db, base, cand)
 guard/demo.py        replay_duplicate(), insert_incomplete()  (failure-case demos)
-guard/api.py         [step 5] FastAPI app, REST + SSE (change streams)
+guard/api.py         FastAPI app: REST + /api/stream SSE (change streams); `uvicorn guard.api:app --reload`
 web/index.html       [step 6] single page, plain JS, no build step
 data/*.json          prompts.json (v1,v2,v3), test_cases.json (tc01..tc12)
 tests/               pytest; conftest.py gives a mongomock `db` fixture
