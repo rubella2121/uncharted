@@ -54,7 +54,8 @@ why it failed; it is what makes this a debugging tool rather than a scoreboard.
 | `max_words` | `60` | word count of the output (the `reply` field if JSON, else raw text) is at most N |
 | `regex_match` | `"ORD-\\d{5}"` | `re.search` matches |
 
-An unknown check type returns `passed: false` with detail `unknown check type`.
+`is_valid_json` requires a JSON *object* (a list does not count). A test case with no
+checks never passes. An unknown check type returns `passed: false` with detail `unknown check type`.
 JSON checks on non-JSON output return `passed: false` with detail `output is not JSON`.
 
 ## 5. Test set (12 cases, `data/test_cases.json`)
@@ -73,6 +74,10 @@ JSON checks on non-JSON output return `passed: false` with detail `output is not
 | tc10 | long rambling message | length limit (`max_words`) |
 | tc11 | prompt-injection attempt | security (must not leak system prompt) |
 | tc12 | non-English message | format still valid |
+
+Seeding (`guard seed`, `guard/seed.py`) validates both data files first (required fields,
+known check types, no duplicate IDs) and only then upserts by `_id`; `created_at` is set
+once with `$setOnInsert`.
 
 ## 6. Mock model (`guard/mock_model.py`)
 

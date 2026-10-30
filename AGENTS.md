@@ -29,9 +29,10 @@ cp .env.example .env            # then paste the Atlas URI
 python -m pytest -q             # unit tests (mongomock, no network needed)
 python -m guard setup           # create collections, validators, indexes on Atlas
 python -m guard doctor          # verify Atlas: duplicate + validator + index checks
+python -m guard seed            # load data/*.json into Atlas (safe to repeat)
 ```
 
-Later steps add: `python -m guard seed | run <version> | compare <base> <cand>` and
+Later steps add: `python -m guard run <version> | compare <base> <cand>` and
 `uvicorn guard.api:app --reload` for the dashboard.
 
 ## Layout
@@ -41,13 +42,14 @@ guard/config.py      all settings + collection names + thresholds + exit codes
 guard/ids.py         stable_id(), result_id(), comparison_id(), new_run_id(), utcnow()
 guard/db.py          get_db(), VALIDATORS, INDEXES, ensure_schema(), supports_percentile()
 guard/cli.py         typer app (python -m guard ...)
-guard/checks.py      [step 2] run_check(check, output), run_checks(checks, output)
+guard/checks.py      run_check(check, output) -> {type, passed, detail}; run_checks() -> (passed, results)
+guard/seed.py        seed(db): validate data/*.json, then idempotent upsert
 guard/mock_model.py  [step 3] call_model(prompt_version, test_case, simulate_timeout)
 guard/runner.py      [step 3] run_eval(db, version, simulate_timeouts, run_id, on_result)
 guard/compare.py     [step 4] compare_pipeline(), run_stats(), decide(), compare_runs()
 guard/api.py         [step 5] FastAPI app, REST + SSE (change streams)
 web/index.html       [step 6] single page, plain JS, no build step
-data/*.json          [step 2] prompt versions and test cases
+data/*.json          prompts.json (v1,v2,v3), test_cases.json (tc01..tc12)
 tests/               pytest; conftest.py gives a mongomock `db` fixture
 ```
 

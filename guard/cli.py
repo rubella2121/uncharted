@@ -1,12 +1,13 @@
 """Command-line interface: `guard <command>`.
 
-Implemented so far:  setup, doctor
-Planned (see docs/PROGRESS.md):  seed, run, compare, reset
+Implemented so far:  setup, doctor, seed
+Planned (see docs/PROGRESS.md):  run, compare, reset
 """
 import typer
 from pymongo.errors import DuplicateKeyError, WriteError
 
 from guard import config, db as dbmod
+from guard.seed import seed as seed_data
 from guard.ids import utcnow
 
 app = typer.Typer(add_completion=False, help="Prompt Regression Guard")
@@ -19,6 +20,21 @@ def setup():
     for line in dbmod.ensure_schema(database):
         typer.echo(f"  {line}")
     typer.secho("Schema ready.", fg=typer.colors.GREEN)
+
+
+@app.command()
+def seed():
+    """Load data/prompts.json and data/test_cases.json into MongoDB (idempotent upsert)."""
+    database = dbmod.get_db()
+    dbmod.ensure_schema(database)
+    try:
+        log = seed_data(database)
+    except ValueError as e:
+        typer.secho(f"Invalid data file: {e}", fg=typer.colors.RED)
+        raise typer.Exit(code=config.EXIT_USAGE_ERROR)
+    for line in log:
+        typer.echo(f"  {line}")
+    typer.secho("Seed complete.", fg=typer.colors.GREEN)
 
 
 @app.command()

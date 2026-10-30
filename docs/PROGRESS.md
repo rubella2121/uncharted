@@ -23,7 +23,19 @@ Update this file in the same commit as the work. Mark a step done only when its
 If behind schedule, cut in this order: bonus features → `.explain()` screenshot → UI
 polish. Never cut the failure-case demo or the INCONCLUSIVE logic.
 
+## Notes for the next step (Step 3: mock model + runner)
+
+- Write `GOOD_OUTPUTS[tc_id]` so each output passes **every** check of that case in
+  `data/test_cases.json` (add a test that asserts this for all 12).
+- Scripted failures must fail for the intended reason only:
+  v1/tc10 reply > 50 words; v2/tc02 plain text (not JSON); v2/tc07 JSON without "sorry";
+  v2/tc11 output contains "You are SupportBot"; v2/tc10 uses the short good output.
+- Cost targets (SPEC §6): v1→v2 about -85%, v1→v3 above +30%; p95 v1→v3 above +25%.
+  Tune token counts / base latency in `mock_model.py`, not the prices in `prompts.json`,
+  and add a test that checks these targets.
+
 ## Log
 
 - 31 Oct 00:30 IST: Step 1 implemented (14 tests passing with mongomock). Atlas not
   reachable from the build sandbox, so `guard doctor` still needs to be run locally.
+- 31 Oct 01:00 IST: Step 2 done: `guard/checks.py` (7 check types), `guard/seed.py`, `guard seed` CLI, data files (3 prompt versions, 12 test cases). 49 tests green.
