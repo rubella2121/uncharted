@@ -1,0 +1,14 @@
+[project]
+name = "prompt-regression-guard"
+version = "0.1.0"
+description = "Unit tests plus CI for LLM prompts, backed by MongoDB"
+requires-python = ">=3.10"
+
+[project.scripts]
+guard = "guard.cli:app"
+
+[tool.setuptools]
+packages = ["guard"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
