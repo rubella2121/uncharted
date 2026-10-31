@@ -6,326 +6,415 @@
 <title>PARAKH</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Devanagari:wght@500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&family=Tiro+Devanagari+Hindi&display=swap" rel="stylesheet">
 <style>
 :root {
   color-scheme: dark;
-  --series-score: #3987e5; --series-pass: #d95926;
-  /* surfaces: ground, panel, raised */
-  --bg: #0b1210; --panel: #111b18; --panel-2: #16231f; --panel-3: #1b2b26;
-  --border: #22332e;          /* structural dividers */
-  --control-border: #5a7068;  /* control edges: >= 3:1 on panel and panel-2 (WCAG 1.4.11) */
-  --text: #e3ece8; --text-2: #c9d6d0; --muted: #8aa39a;
-  --accent: #00ed64; --accent-ink: #04140b; --accent-dim: #0b3d24; --focus: #7cf0ae;
-  --pass: #2fd47a; --pass-bg: #0f2e1f; --fail: #ff5d5d; --fail-bg: #3a1414;
-  --warn: #ffb547; --warn-bg: #3a2a0d; --gray: #8f9aa6; --gray-bg: #232a31;
-  --info: #b48cff; --info-bg: #2a1f40;
-  --sans: "IBM Plex Sans", system-ui, sans-serif;
-  --mono: "IBM Plex Mono", ui-monospace, monospace;
-  --r-card: 8px; --r-ctl: 6px; --r-tag: 4px;
+  /* ground: steeped leaf; panels get one step lighter each */
+  --bg: #14100c; --panel: #1c1611; --panel-2: #241c16; --panel-3: #2d241c;
+  --border: #382d23;           /* structural hairlines */
+  --control-border: #806d57;   /* control edges, >= 3:1 on panel and panel-2 */
+  --text: #f4ede3; --text-2: #dbcfbf; --muted: #ab9a83;
+  --amber: #e7a84f; --amber-ink: #1b1107;   /* the brand: assay mark, focus */
+  --focus: #f6c77e;
+  --primary: #f4ede3; --primary-ink: #17110c;   /* porcelain button */
+  /* verdict and case states: each also carries a word or mark */
+  --pass: #93cf86; --pass-bg: #1d2a1a; --pass-line: #3f6b38;
+  --fail: #ff7a66; --fail-bg: #3a1813; --fail-line: #8a3a2e;
+  --warn: #f2b54e; --warn-bg: #36260f; --warn-line: #7a5a22;
+  --unv: #a9b8cf; --unv-bg: #1f232c; --unv-line: #5d6a80;
+  --info: #c3adec; --info-bg: #2a2238;
+  /* chart series: amber vs porcelain blue, apart for colour-blind readers too */
+  --series-score: #e7a84f; --series-pass: #7fb6dd;
+  --sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --mono: "Geist Mono", ui-monospace, "SFMono-Regular", monospace;
+  --deva: "Tiro Devanagari Hindi", serif;
+  --r: 10px; --r-ctl: 7px; --r-tag: 5px;
   --ease: cubic-bezier(.16, 1, .3, 1);
+  --gutter: clamp(16px, 3vw, 40px);
 }
 * { box-sizing: border-box; }
-html { scrollbar-color: #33463f var(--bg); }
+html { scrollbar-color: #4a3c2f var(--bg); }
 body { margin: 0; background: var(--bg); color: var(--text);
-  font: 14px/1.5 var(--sans); -webkit-font-smoothing: antialiased; }
-::selection { background: var(--accent-dim); color: var(--text); }
+  font: 15px/1.55 var(--sans); -webkit-font-smoothing: antialiased; font-feature-settings: "ss01"; }
+::selection { background: #5a4126; color: var(--text); }
 button, select, input { font: inherit; color: inherit; }
-code, .mono { font-family: var(--mono); font-size: 12.5px; }
-a { color: var(--accent); text-underline-offset: 2px; }
+code, .mono { font-family: var(--mono); font-size: .86em; }
+a { color: var(--amber); text-underline-offset: 3px; }
 :focus { outline: none; }
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
   clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .ico { width: 1em; height: 1em; flex: none; vertical-align: -0.125em; }
 
-/* header */
-header { display: flex; align-items: center; gap: 12px 20px; flex-wrap: wrap;
-  padding: 14px 24px; border-bottom: 1px solid var(--border); background: var(--panel); }
-.brand { display: flex; align-items: baseline; gap: 10px; }
-header h1 { font-size: 18px; font-weight: 700; letter-spacing: .08em; margin: 0; }
-.brand .deva { font-family: "IBM Plex Sans Devanagari", var(--sans); font-weight: 500; color: var(--muted); font-size: 15px; }
-header p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
-.status { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
-.pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px;
-  border-radius: 999px; background: var(--panel-2); border: 1px solid var(--border);
-  font-size: 12px; color: var(--muted); white-space: nowrap; }
-.pill.mock { color: var(--warn); border-color: #6b5320; background: var(--warn-bg); }
-.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gray); }
-.dot.on { background: var(--accent); }
+/* ---------- masthead ---------- */
+header { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 24px 40px;
+  padding: 36px var(--gutter) 28px; max-width: 1480px; margin: 0 auto; }
+.brand { display: flex; align-items: center; gap: 18px; }
+.mark { width: 58px; height: 58px; flex: none; color: var(--amber); }
+.wordmark { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+header h1 { margin: 0; font-size: clamp(40px, 5.2vw, 68px); font-weight: 700; letter-spacing: -0.035em; line-height: .95; }
+.brand .deva { font-family: var(--deva); font-size: clamp(24px, 2.6vw, 34px); color: var(--amber); line-height: 1; }
+.tagline { margin: 14px 0 0; font-size: clamp(17px, 1.6vw, 21px); color: var(--text-2); letter-spacing: -0.01em; text-wrap: balance; }
+.tagline .proj { color: var(--muted); font-size: 14px; letter-spacing: 0; white-space: nowrap; }
+.status { display: grid; grid-template-columns: auto auto; gap: 7px 16px; margin: 0; font-size: 13.5px;
+  padding: 14px 18px; border: 1px solid var(--border); border-radius: var(--r); background: var(--panel); min-width: 300px; }
+.status dt { color: var(--muted); }
+.status dd { margin: 0; display: flex; align-items: center; gap: 8px; color: var(--text); }
+.status dd.mock { color: var(--warn); }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--unv); flex: none; }
+.dot.on { background: var(--pass); box-shadow: 0 0 0 3px rgba(147, 207, 134, .16); }
 .dot.off { background: var(--fail); }
 .dot.mid { background: var(--warn); }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px;
+  background: var(--panel-2); border: 1px solid var(--border); font-size: 12.5px; color: var(--text-2); white-space: nowrap;
+  font-variant-numeric: tabular-nums; }
 
-/* layout */
-main { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 16px; padding: 16px 24px 32px;
-  max-width: 1440px; margin: 0 auto; }
-.col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
-@media (max-width: 960px) {
-  main { display: flex; flex-direction: column; padding: 12px 16px 24px; gap: 12px; }
-  header { padding: 12px 16px; }
-  .col { display: contents; }
-  /* the verdict comes first on narrow screens, then the run form */
-  #verdict-card { order: 1; } #run-card { order: 2; } #results-card { order: 3; }
-  #history-card { order: 4; } #runs-card { order: 5; } #failure-card { order: 6; }
-  #mongo-card { order: 7; } #log-card { order: 8; }
-  .card > h2 .step { display: none; }  /* numbering would contradict the reordered sections */
+/* ---------- workspace bar ---------- */
+.workspace { max-width: 1480px; margin: 0 auto; padding: 0 var(--gutter); }
+#run-card { display: grid; grid-template-columns: minmax(220px, 340px) minmax(0, 1fr) auto; align-items: center; gap: 12px 24px;
+  padding: 16px 20px; background: var(--panel); border: 1px solid var(--border); border-radius: var(--r); }
+#run-card > h2 { grid-column: 1 / -1; margin: 0; font-size: 13px; font-weight: 500; color: var(--muted); display: flex; gap: 8px; align-items: center; }
+.ver-field { display: grid; gap: 4px; }
+.ver-field label { font-size: 12.5px; color: var(--muted); }
+#run-card .opts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; min-width: 0; }
+#run-card .go { display: flex; align-items: center; gap: 12px; }
+#version-desc { grid-column: 1 / -1; margin: 0; }
+#timeouts-box { min-width: 0; }
+
+/* ---------- main grid ---------- */
+main { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 28px 40px;
+  padding: 28px var(--gutter) 56px; max-width: 1480px; margin: 0 auto; align-items: start; }
+.col { display: flex; flex-direction: column; gap: 28px; min-width: 0; }
+.rail { gap: 0; }
+.card { min-width: 0; }
+.card > h2 { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 14px;
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.card > h2 .right { margin-left: auto; font-weight: 400; font-size: 13px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-width: 0; }
+.rail .card { padding: 22px 0; border-top: 1px solid var(--border); }
+.rail .card:first-child { padding-top: 0; border-top: 0; }
+.rail .card > h2 { font-size: 15px; }
+#results-card, #history-card { padding-top: 26px; border-top: 1px solid var(--border); }
+#run-title { overflow-wrap: anywhere; min-width: 0; font-weight: 400; color: var(--muted); font-size: 12.5px; }
+label.field { display: block; font-size: 12.5px; font-weight: 500; color: var(--muted); margin: 0 0 5px; }
+.hint { color: var(--muted); font-size: 13px; margin: 6px 0 0; text-wrap: pretty; }
+
+@media (max-width: 1080px) {
+  main { grid-template-columns: minmax(0, 1fr); }
+  .rail .card:first-child { padding-top: 22px; border-top: 1px solid var(--border); }
 }
-.card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--r-card);
-  padding: 16px; min-width: 0; }
-.card > h2 { font-size: 14px; font-weight: 600; color: var(--text); margin: 0 0 12px;
-  display: flex; align-items: center; gap: 8px; flex-wrap: wrap; letter-spacing: 0; }
-.step { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: var(--r-tag);
-  background: var(--panel-3); border: 1px solid var(--border); font: 600 11px/1 var(--mono); color: var(--muted); }
-#run-title { overflow-wrap: anywhere; min-width: 0; font-weight: 400; color: var(--muted); }
-.card > h2 .right { margin-left: auto; font-weight: 400; }
-label.field { display: block; font-size: 12px; font-weight: 500; color: var(--muted); margin: 12px 0 4px; }
+@media (max-width: 760px) {
+  header { grid-template-columns: 1fr; padding-top: 24px; padding-bottom: 20px; }
+  .status { min-width: 0; }
+  .mark { width: 44px; height: 44px; }
+  #run-card { grid-template-columns: 1fr; padding: 16px; }
+  #run-card .go { justify-content: stretch; } #run-card .go .btn { flex: 1; }
+  main { padding-top: 20px; }
+}
 
-/* controls */
-select { width: 100%; background: var(--panel-2); border: 1px solid var(--control-border);
-  border-radius: var(--r-ctl); padding: 7px 10px; min-height: 36px; }
-select:hover { border-color: var(--muted); }
-.btn { border: 1px solid var(--control-border); background: var(--panel-2); border-radius: var(--r-ctl);
-  padding: 7px 14px; min-height: 36px; cursor: pointer; font-weight: 500;
-  transition: background .15s, border-color .15s; }
-.btn:hover:not(:disabled) { border-color: var(--text-2); background: var(--panel-3); }
-.btn:active:not(:disabled) { background: var(--panel); }
+/* ---------- controls ---------- */
+select { width: 100%; background: var(--panel-2); border: 1px solid var(--control-border); border-radius: var(--r-ctl);
+  padding: 8px 34px 8px 12px; min-height: 40px; appearance: none; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 6l4 4 4-4' fill='none' stroke='%23ab9a83' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center; background-size: 16px; }
+select:hover { border-color: var(--text-2); }
+select option { background: var(--panel-2); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  border: 1px solid var(--control-border); background: transparent; border-radius: var(--r-ctl);
+  padding: 8px 16px; min-height: 40px; cursor: pointer; font-weight: 500;
+  transition: background .15s, border-color .15s, transform .1s; }
+.btn:hover:not(:disabled) { border-color: var(--text-2); background: var(--panel-2); }
+.btn:active:not(:disabled) { transform: translateY(1px); }
 .btn:disabled { opacity: .45; cursor: not-allowed; }
-.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
-.btn.primary:hover:not(:disabled) { background: #3df487; border-color: #3df487; }
-.btn.primary:active:not(:disabled) { background: #00c955; }
-.btn.block { width: 100%; margin-top: 14px; }
-.btn.small { padding: 4px 10px; min-height: 30px; font-size: 12.5px; }
-.btn.icon-btn { display: inline-grid; place-items: center; width: 30px; padding: 0; }
-.hint { color: var(--muted); font-size: 12px; margin: 6px 0 0; text-wrap: pretty; }
-details.timeouts { margin-top: 12px; }
-details.timeouts > summary { cursor: pointer; font-size: 12px; font-weight: 500; color: var(--muted); padding: 4px 0;
-  list-style-position: inside; }
-details.timeouts > summary:hover { color: var(--text-2); }
+.btn.primary { background: var(--primary); color: var(--primary-ink); border-color: var(--primary); font-weight: 600; padding: 8px 22px; }
+.btn.primary:hover:not(:disabled) { background: #fff; border-color: #fff; }
+.btn.block { width: 100%; }
+.btn.small { padding: 4px 11px; min-height: 32px; font-size: 13px; }
+.btn.icon-btn { width: 32px; padding: 0; }
+details.timeouts > summary { cursor: pointer; font-size: 13.5px; font-weight: 500; color: var(--text-2); padding: 6px 0;
+  list-style: none; display: inline-flex; align-items: center; gap: 6px; }
+details.timeouts > summary::-webkit-details-marker { display: none; }
+details.timeouts > summary::before { content: ""; width: 7px; height: 7px; border-right: 1.6px solid currentColor;
+  border-bottom: 1.6px solid currentColor; transform: rotate(-45deg); transition: transform .15s; margin-right: 2px; }
+details.timeouts[open] > summary::before { transform: rotate(45deg); }
+details.timeouts > summary:hover { color: var(--text); }
+details.timeouts[open] { flex-basis: 100%; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-.chip { position: relative; display: inline-flex; align-items: center; padding: 3px 8px; min-height: 28px;
-  border-radius: var(--r-tag); background: var(--panel-2); border: 1px solid var(--control-border);
-  cursor: pointer; font-size: 12px; font-family: var(--mono); user-select: none; }
+.chip { position: relative; display: inline-flex; align-items: center; padding: 3px 9px; min-height: 30px;
+  border-radius: var(--r-tag); border: 1px solid var(--control-border); cursor: pointer; font-size: 12.5px;
+  font-family: var(--mono); user-select: none; color: var(--text-2); }
 .chip:hover { border-color: var(--text-2); }
 .chip:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
-.chip.on { background: var(--gray-bg); border-color: var(--text-2); color: #fff; }
-.chip.on { font-weight: 600; }
-.chip.on::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; margin-right: 6px; }
-.check-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 13px; cursor: pointer; }
-.check-row input { width: 16px; height: 16px; accent-color: var(--accent); margin: 0; }
+.chip.on { background: var(--unv-bg); border-color: var(--unv); color: var(--text); font-weight: 500; }
+.chip.on::before { content: ""; width: 7px; height: 7px; border-radius: 50%; border: 1.5px dashed var(--unv); margin-right: 6px; }
+.check-row { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; cursor: pointer; color: var(--text-2); }
+.check-row input { width: 16px; height: 16px; accent-color: var(--amber); margin: 0; }
 
-/* run history */
-.runs { list-style: none; margin: 0; padding: 0; max-height: 320px; overflow: auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; }
-.runs .tag { flex: none; }
-.runs li { border-radius: var(--r-ctl); border: 1px solid transparent; }
-.runs li.sel { border-color: var(--control-border); background: var(--panel-2); }
-.run-btn { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px; background: none;
-  border: 0; border-radius: var(--r-ctl); cursor: pointer; text-align: left; }
-.run-btn:hover { background: var(--panel-2); }
-.runs .v { font-weight: 600; font-family: var(--mono); width: 24px; }
-.runs .meta { color: var(--muted); font-size: 12px; flex: 1; min-width: 0; overflow: hidden;
-  text-overflow: ellipsis; white-space: nowrap; }
-.runs .meta .mono { font-size: 11.5px; }
-.runs .gitline { padding: 0 8px 8px 42px; margin-top: -4px; }
-
-/* tags: always a word, never colour alone */
-.tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: var(--r-tag);
-  font-size: 11.5px; font-weight: 600; letter-spacing: .02em; white-space: nowrap; line-height: 1.5; }
-.tag.pass, .tag.fixed { background: var(--pass-bg); color: var(--pass); }
-.tag.fail, .tag.regressed { background: var(--fail-bg); color: var(--fail); }
-.tag.timeout, .tag.error, .tag.unverified { background: var(--gray-bg); color: #b5c0ca; }
+/* ---------- tags: always a word, never colour alone ---------- */
+.tag { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: var(--r-tag);
+  font-size: 12px; font-weight: 600; letter-spacing: .02em; white-space: nowrap; line-height: 1.55; border: 1px solid transparent; }
+.tag.pass, .tag.fixed { background: var(--pass-bg); color: var(--pass); border-color: var(--pass-line); }
+.tag.fail, .tag.regressed { background: var(--fail-bg); color: var(--fail); border-color: var(--fail-line); }
+.tag.timeout, .tag.error, .tag.unverified { background: var(--unv-bg); color: var(--unv); border: 1px dashed var(--unv-line); }
 .tag.running { background: var(--info-bg); color: var(--info); }
-.tag.still_failing, .tag.warn { background: var(--warn-bg); color: var(--warn); }
+.tag.still_failing, .tag.warn { background: var(--warn-bg); color: var(--warn); border-color: var(--warn-line); }
 .tag.still_passing, .tag.neutral { background: var(--panel-3); color: var(--text-2); }
 
-/* verdict */
-#verdict-area { transition: opacity .2s; }
-#verdict-area.stale { opacity: .72; }
-.pending-note { display: none; align-items: center; gap: 8px; margin-top: 14px; font-size: 13px; color: var(--info); }
+/* ---------- verdict: the stamped grade ---------- */
+#verdict-card { background: var(--panel); border: 1px solid var(--border); border-radius: calc(var(--r) + 4px);
+  padding: clamp(18px, 2.4vw, 32px); box-shadow: 0 18px 50px -24px rgba(0, 0, 0, .7); }
+#verdict-card > h2 { font-size: 13px; font-weight: 500; color: var(--muted); letter-spacing: .01em; }
+.compare-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; align-items: end; }
+@media (max-width: 640px) { .compare-row { grid-template-columns: 1fr; } }
+#verdict-area { transition: opacity .2s; margin-top: 24px; }
+#verdict-area.stale { opacity: .7; }
+.pending-note { display: none; align-items: center; gap: 8px; margin-top: 14px; font-size: 13.5px; color: var(--info); }
 .pending-note.on { display: flex; }
-.verdict { border-radius: var(--r-card); padding: 16px 18px; background: var(--panel-2);
-  display: grid; grid-template-columns: auto 1fr; gap: 2px 14px; align-items: center; }
-.verdict .icon { grid-row: span 2; display: grid; place-items: center; width: 40px; height: 40px;
-  border-radius: var(--r-ctl); font-size: 22px; }
-.verdict .title { font-size: 22px; font-weight: 700; letter-spacing: .02em; line-height: 1.2; }
-.verdict .sub { color: var(--text-2); font-size: 13px; text-wrap: balance; }
-.verdict .runs-line { grid-column: 1 / -1; margin-top: 10px; font-size: 12px; color: var(--text-2); }
-.verdict .runs-line code { font-size: 11.5px; }
-.verdict ul { grid-column: 1 / -1; margin: 8px 0 0; padding-left: 18px; color: var(--text); text-wrap: pretty; }
-.verdict .actions { grid-column: 1 / -1; margin-top: 12px; }
-.verdict.SAFE { background: var(--pass-bg); } .verdict.SAFE .title, .verdict.SAFE .icon { color: var(--pass); }
-.verdict.RISKY { background: var(--warn-bg); } .verdict.RISKY .title, .verdict.RISKY .icon { color: var(--warn); }
-.verdict.NOT_SAFE { background: var(--fail-bg); } .verdict.NOT_SAFE .title, .verdict.NOT_SAFE .icon { color: var(--fail); }
-.verdict.INCONCLUSIVE { background: var(--info-bg); } .verdict.INCONCLUSIVE .title, .verdict.INCONCLUSIVE .icon { color: var(--info); }
-.verdict .icon { background: rgba(0,0,0,.22); }
-.verdict.empty { color: var(--muted); display: block; text-align: center; padding: 28px 16px; background: var(--panel-2); }
-@keyframes settle { from { opacity: .4; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-.verdict.fresh { animation: settle .3s var(--ease); }
-details.rules { margin-top: 14px; font-size: 12.5px; color: var(--text-2); }
-details.rules > summary { cursor: pointer; color: var(--muted); font-size: 12px; font-weight: 500; }
-details.rules dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 10px 0 0; }
-details.rules dt { font-weight: 600; } details.rules dd { margin: 0; }
-
-.counts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
-.metrics { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 14px;
-  border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
-.metric { padding: 12px 16px; }
-.metric:first-child { padding-left: 0; }
-.metric + .metric { border-left: 1px solid var(--border); }
+.verdict { --vc: var(--text); --vbg: var(--panel-2);
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 28px; align-items: center; }
+.verdict.SAFE { --vc: var(--pass); --vbg: var(--pass-bg); }
+.verdict.RISKY { --vc: var(--warn); --vbg: var(--warn-bg); }
+.verdict.NOT_SAFE { --vc: var(--fail); --vbg: var(--fail-bg); }
+.verdict.INCONCLUSIVE { --vc: var(--unv); --vbg: var(--unv-bg); }
+.verdict .icon { grid-row: span 2; display: grid; place-items: center; align-self: start;
+  width: 108px; height: 108px; border-radius: 50%; color: var(--vc); background: var(--vbg);
+  border: 2px solid var(--vc); outline: 1px solid var(--vc); outline-offset: 4px; font-size: 46px; transform: rotate(-8deg); }
+.verdict.INCONCLUSIVE .icon { border-style: dashed; }
+.verdict .title { font-size: clamp(32px, 4.4vw, 54px); font-weight: 700; letter-spacing: -0.03em; line-height: 1; color: var(--vc); }
+.verdict .sub { color: var(--text-2); font-size: 16px; max-width: 62ch; text-wrap: pretty; }
+.verdict .runs-line { grid-column: 1 / -1; margin-top: 18px; font-size: 13.5px; color: var(--text-2);
+  padding-top: 14px; border-top: 1px solid var(--border); }
+.verdict ul { grid-column: 1 / -1; margin: 6px 0 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.verdict ul li { display: flex; gap: 10px; align-items: baseline; font-size: 15px; text-wrap: pretty; }
+.verdict ul li::before { content: ""; width: 6px; height: 6px; border-radius: 1px; background: var(--vc); flex: none; transform: translateY(-2px) rotate(45deg); }
+.verdict .actions { grid-column: 1 / -1; margin-top: 8px; }
+.verdict.empty { display: grid; grid-template-columns: auto 1fr; color: var(--muted); padding: 8px 0; font-size: 15px; }
+.verdict.empty::before { content: ""; width: 72px; height: 72px; border-radius: 50%; border: 2px dashed var(--control-border); }
+@keyframes stamp { 0% { opacity: 0; transform: rotate(-8deg) scale(1.35); } 60% { opacity: 1; transform: rotate(-8deg) scale(.96); } 100% { transform: rotate(-8deg) scale(1); } }
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.verdict.fresh .icon { animation: stamp .45s var(--ease); }
+.verdict.fresh .title, .verdict.fresh .sub { animation: rise .4s var(--ease) both; }
+.verdict.fresh .sub { animation-delay: .06s; }
 @media (max-width: 560px) {
+  .verdict { grid-template-columns: 1fr; }
+  .verdict .icon { grid-row: auto; width: 76px; height: 76px; font-size: 32px; }
+}
+details.rules { margin-top: 22px; font-size: 13.5px; color: var(--text-2); border-top: 1px solid var(--border); padding-top: 14px; }
+details.rules > summary { cursor: pointer; color: var(--muted); font-size: 13.5px; font-weight: 500; }
+details.rules > summary:hover { color: var(--text); }
+details.rules dl { display: grid; grid-template-columns: max-content 1fr; gap: 8px 16px; margin: 12px 0 0; }
+details.rules dt { font-weight: 600; font-size: 12.5px; letter-spacing: .03em; } details.rules dd { margin: 0; }
+
+.counts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 18px; }
+.warnings { color: var(--warn); font-size: 13.5px; margin-top: 12px; }
+
+/* measurements: baseline -> candidate, with the delta drawn against its limit */
+.metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; margin-top: 22px;
+  border: 1px solid var(--border); border-radius: var(--r); background: var(--bg); }
+.metric { padding: 16px 18px; min-width: 0; }
+.metric + .metric { border-left: 1px solid var(--border); }
+@media (max-width: 760px) {
   .metrics { grid-template-columns: 1fr; }
-  .metric { padding: 10px 0; }
   .metric + .metric { border-left: 0; border-top: 1px solid var(--border); }
 }
-.metric .k { color: var(--muted); font-size: 12px; }
-.metric .val { font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 2px; }
-.metric .delta { font-size: 12px; font-family: var(--mono); color: var(--muted); }
-.metric .delta.breach { color: var(--fail); font-weight: 500; }
-.mock-note { display: flex; gap: 6px; align-items: baseline; font-size: 12px; color: var(--muted); margin: 8px 0 0; }
+.metric .k { color: var(--muted); font-size: 13px; }
+.metric .val { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.metric .val .arr { color: var(--muted); font-weight: 400; margin: 0 .2em; }
+.metric .delta { font-size: 12.5px; font-family: var(--mono); color: var(--muted); margin-top: 2px; }
+.metric .delta.breach { color: var(--fail); }
+.metric .delta.better { color: var(--pass); }
+.gauge { position: relative; height: 6px; margin-top: 12px; border-radius: 3px; background: var(--panel-3); }
+.gauge i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: var(--text-2); transition: width .5s var(--ease); }
+.gauge.breach i { background: var(--fail); }
+.gauge.better i { background: var(--pass); }
+.gauge b { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--text); border-radius: 1px; }
+.gauge-key { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--muted); margin-top: 6px; font-family: var(--mono); }
+.mock-note { display: flex; gap: 8px; align-items: baseline; font-size: 13px; color: var(--muted); margin: 12px 0 0; }
 .mock-note .ico { color: var(--warn); }
-.grid-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-top: 18px; }
-.grid-head h3 { font-size: 13px; font-weight: 600; margin: 0; }
-.grid12 { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 4px; margin-top: 8px; }
-.cell { border-radius: var(--r-ctl); padding: 6px 8px; font: inherit; font-size: 11.5px; color: var(--muted);
-  background: var(--panel-2); border: 1px solid transparent; cursor: pointer; text-align: left; line-height: 1.35; }
-.cell b { font-family: var(--mono); font-weight: 500; display: block; color: var(--text-2); font-size: 12px; }
-.cell:hover { border-color: var(--control-border); }
-.cell.regressed { border-color: var(--fail); background: var(--fail-bg); color: var(--fail); }
-.cell.fixed { border-color: #2a7a4f; background: var(--pass-bg); color: var(--pass); }
-.cell.unverified { border: 1px dashed var(--gray); color: #b5c0ca; }
-.cell.still_failing { border-color: #8a6524; color: var(--warn); }
-.cell.sel { outline: 2px solid var(--text); outline-offset: 1px; }
-.cell.sel:focus-visible { outline-color: var(--focus); }
-.compare-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; align-items: end; }
-@media (max-width: 560px) { .compare-row { grid-template-columns: 1fr; } }
-.compare-row label.field { margin-top: 0; }
-.warnings { color: var(--warn); font-size: 12.5px; margin-top: 8px; }
-.foot { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--muted); margin-top: 12px; }
 
-/* results */
+/* the tasting line: every case, baseline mark -> candidate mark */
+.grid-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; margin-top: 28px; }
+.grid-head h3 { font-size: 16px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
+.legend-marks { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); margin-top: 8px; }
+.legend-marks span { display: inline-flex; align-items: center; gap: 6px; }
+.grid12 { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; margin-top: 12px; }
+.cell { --cc: var(--text-2); position: relative; border-radius: var(--r-ctl); padding: 9px 10px 8px; font: inherit; font-size: 12px;
+  color: var(--cc); background: var(--panel-2); border: 1px solid var(--border); cursor: pointer; text-align: left; line-height: 1.3;
+  transition: opacity .2s var(--ease), border-color .15s, transform .2s var(--ease); }
+.cell b { font-family: var(--mono); font-weight: 500; display: flex; align-items: center; justify-content: space-between; color: var(--text); font-size: 12.5px; margin-bottom: 6px; }
+.cell .marks { display: inline-flex; align-items: center; gap: 3px; }
+.cell .lab { display: block; color: var(--cc); }
+.m { width: 9px; height: 9px; border-radius: 50%; display: inline-block; border: 1.5px solid currentColor; }
+.m.p { background: currentColor; }
+.m.u { border-style: dashed; opacity: .9; }
+.m-arrow { width: 8px; height: 1px; background: var(--muted); display: inline-block; }
+.cell.regressed { --cc: var(--fail); border-color: var(--fail-line); background: var(--fail-bg); }
+.cell.fixed { --cc: var(--pass); border-color: var(--pass-line); background: var(--pass-bg); }
+.cell.unverified { --cc: var(--unv); border: 1px dashed var(--unv-line); background: var(--unv-bg); }
+.cell.still_failing { --cc: var(--warn); border-color: var(--warn-line); }
+.cell.still_passing { --cc: var(--muted); }
+.cell:hover { border-color: var(--text-2); }
+.grid12:has(.cell:hover) .cell:not(:hover):not(.sel) { opacity: .55; }
+.cell.sel { outline: 2px solid var(--text); outline-offset: 2px; transform: translateY(-2px); }
+.cell.sel:focus-visible { outline-color: var(--focus); }
+.foot { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 12.5px; color: var(--muted); margin-top: 16px; }
+
+/* ---------- results ---------- */
 .table-wrap { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; }
-th { text-align: left; font-size: 12px; color: var(--muted); font-weight: 500;
-  padding: 8px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
-td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { text-align: left; font-size: 12.5px; color: var(--muted); font-weight: 500;
+  padding: 10px 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+td { padding: 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
 td.num, th.num { text-align: right; }
-td.num { font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 12.5px; white-space: nowrap; color: var(--text-2); }
+td.num { font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 13px; white-space: nowrap; color: var(--text-2); }
 tr.res { cursor: pointer; }
-tr.res:hover td { background: var(--panel-2); }
+tr.res:hover td { background: var(--panel); }
 tr.pending td { color: var(--muted); }
 tr.pending .tc-name { opacity: .6; }
 @keyframes arrive { from { background: var(--panel-3); } to { background: transparent; } }
-tr.new td { animation: arrive .25s ease-out; }
-.row-toggle { display: flex; gap: 6px; align-items: flex-start; background: none; border: 0; padding: 0;
-  text-align: left; cursor: pointer; }
-.row-toggle .chev { color: var(--muted); transition: transform .15s; margin-top: 3px; }
+tr.new td { animation: arrive .5s ease-out; }
+.row-toggle { display: flex; gap: 8px; align-items: flex-start; background: none; border: 0; padding: 0; text-align: left; cursor: pointer; }
+.row-toggle .chev { color: var(--muted); transition: transform .15s; margin-top: 4px; }
 .row-toggle[aria-expanded="true"] .chev { transform: rotate(90deg); }
-.tc-name { font-weight: 500; } .tc-risk { color: var(--muted); font-size: 12px; }
-.detail { color: var(--fail); font-size: 12.5px; }
-.detail code { font-size: 12px; }
-.detail.gray { color: #b5c0ca; }
-tr.expand td { background: var(--panel-2); }
-@media (max-width: 560px) {
+.tc-name { font-weight: 500; } .tc-risk { color: var(--muted); font-size: 12.5px; }
+.detail { color: var(--fail); font-size: 13px; }
+.detail code { font-size: 12.5px; }
+.detail.gray { color: var(--unv); }
+tr.expand td { background: var(--panel); padding: 16px 16px 18px 36px; }
+@media (max-width: 640px) {
   #results-card thead { display: none; }
   #results-card tbody tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px;
-    border-bottom: 1px solid var(--border); padding: 8px 0; }
+    border-bottom: 1px solid var(--border); padding: 10px 0; }
   #results-card tbody td { border: 0; padding: 2px 0; }
   #results-card tbody td:nth-child(2) { text-align: right; }
-  #results-card tbody td:nth-child(3) { grid-column: 1 / -1; padding-left: 20px; }
+  #results-card tbody td:nth-child(3) { grid-column: 1 / -1; padding-left: 24px; }
   #results-card tbody td.num { display: none; }
-  #results-card tbody tr.expand td, #results-card tbody td.empty-state { grid-column: 1 / -1; }
+  #results-card tbody tr.expand td, #results-card tbody td.empty-state { grid-column: 1 / -1; padding-left: 12px; }
   #results-card .table-wrap { overflow: visible; }
 }
-pre.out { white-space: pre-wrap; word-break: break-word; margin: 0; font-family: var(--mono);
-  font-size: 12px; color: var(--text); }
-.checklist { margin: 8px 0 0; padding: 0; list-style: none; font-size: 12.5px; }
-.checklist li { padding: 2px 0; display: flex; gap: 6px; align-items: baseline; }
+pre.out { white-space: pre-wrap; word-break: break-word; margin: 0; font-family: var(--mono); font-size: 13px; color: var(--text);
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--r-ctl); padding: 10px 12px; }
+.checklist { margin: 10px 0 0; padding: 0; list-style: none; font-size: 13px; }
+.checklist li { padding: 3px 0; display: flex; gap: 8px; align-items: baseline; }
 .ok-c { color: var(--pass); } .bad-c { color: var(--fail); }
-.progress { height: 3px; background: var(--panel-2); border-radius: 2px; overflow: hidden; margin-bottom: 12px; }
-.progress div { height: 100%; background: var(--text-2); width: 0; transition: width .3s var(--ease); }
+.progress { height: 3px; background: var(--panel-2); border-radius: 2px; overflow: hidden; margin-bottom: 14px; }
+.progress div { height: 100%; background: var(--amber); width: 0; transition: width .3s var(--ease); }
 .progress.done { visibility: hidden; }
-.empty-state { color: var(--muted); text-align: center; padding: 28px 10px; }
+.empty-state { color: var(--muted); text-align: center; padding: 30px 12px; }
 
-/* log + misc */
-.log { font-family: var(--mono); font-size: 12px; max-height: 220px; overflow: auto;
-  background: var(--bg); border-radius: var(--r-ctl); padding: 8px 10px; border: 1px solid var(--border); }
-.log div { padding: 1px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.log .t { color: var(--muted); }
+/* ---------- run history: a timeline ---------- */
+.runs { list-style: none; margin: 0; padding: 0 0 0 4px; max-height: 420px; overflow: auto; display: grid; grid-template-columns: minmax(0, 1fr); }
+.runs li { position: relative; border-radius: var(--r-ctl); padding-left: 18px; }
+.runs li:not(.empty-state)::before { content: ""; position: absolute; left: 3px; top: 0; bottom: 0; width: 1px; background: var(--border); }
+.runs li:not(.empty-state)::after { content: ""; position: absolute; left: 0; top: 18px; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--bg); border: 1.5px solid var(--muted); }
+.runs li.sel::after { background: var(--amber); border-color: var(--amber); }
+.runs li.sel .run-btn { background: var(--panel-2); }
+.run-btn { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 4px 12px; width: 100%; padding: 9px 10px;
+  background: none; border: 0; border-radius: var(--r-ctl); cursor: pointer; text-align: left; }
+.run-btn:hover { background: var(--panel); }
+.runs .v { font-weight: 600; font-family: var(--mono); font-size: 14px; }
+.runs .meta { color: var(--muted); font-size: 12.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.runs .meta .mono { font-size: 11.5px; }
+.runs .gitline { padding: 0 10px 8px 10px; margin-top: -4px; }
+
+/* ---------- operations ---------- */
+.demo-btns { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.demo-btns .btn { justify-content: flex-start; text-align: left; padding: 10px 14px; display: grid; gap: 1px; }
+.demo-btns .btn small { display: block; color: var(--muted); font-weight: 400; font-size: 12.5px; }
+.btn.danger { border-color: var(--fail-line); color: var(--fail); }
+.btn.danger:hover:not(:disabled) { border-color: var(--fail); background: var(--fail-bg); }
+
+/* ---------- MongoDB machinery ---------- */
+.mongo-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; }
+.mongo-list li { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 2px 10px; font-size: 13.5px; color: var(--text-2); }
+.mongo-list li .ico { grid-row: span 2; width: 20px; height: 20px; color: var(--amber); margin-top: 1px; }
+.mongo-list li b { color: var(--text); font-weight: 600; }
+#explain-out { margin-top: 10px; font-size: 12.5px; }
+
+/* ---------- live event log ---------- */
+.log { font-family: var(--mono); font-size: 12.5px; max-height: 260px; overflow: auto; background: #0f0c09;
+  border-radius: var(--r-ctl); padding: 8px 0; border: 1px solid var(--border); }
+.log div { padding: 3px 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-bottom: 1px solid #1d1712; }
+.log div:first-child { animation: arrive .6s ease-out; }
+.log .t { color: var(--muted); margin-right: 6px; }
 .log .ok { color: var(--pass); } .log .bad { color: var(--fail); } .log .warn { color: var(--warn); }
 .log .info { color: var(--info); } .log .ev { color: var(--text-2); } .log .neutral { color: var(--text); }
-.demo-btns { display: grid; grid-template-columns: 1fr; gap: 8px; }
-.demo-btns .btn { text-align: left; padding: 9px 12px; }
-.demo-btns .btn small { display: block; color: var(--muted); font-weight: 400; font-size: 12px; margin-top: 1px; }
-details.mongo > summary { cursor: pointer; font-size: 14px; font-weight: 600; }
-details.mongo ul { padding-left: 18px; margin: 10px 0 0; font-size: 13px; color: var(--text-2); }
-details.mongo li { margin: 5px 0; }
-#explain-out { margin-top: 8px; }
+.log:empty::before { content: "Waiting for database events…"; color: var(--muted); padding: 0 12px; }
 
-/* diff view */
+/* ---------- diff view ---------- */
 #diff-area:empty { display: none; }
-.diff { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
-.diff-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
-.diff-head h3 { margin: 0; font-size: 14px; font-weight: 600; }
+.diff { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border); }
+.diff-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.diff-head h3 { margin: 0; font-size: 16px; font-weight: 600; }
 .diff-head .close { margin-left: auto; }
-.diff-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
-@media (max-width: 700px) { .diff-cols { grid-template-columns: 1fr; } }
-.diff-col { background: var(--panel); border: 1px solid var(--border); border-radius: var(--r-ctl); padding: 10px; min-width: 0; }
-.diff-col .lbl { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+.diff-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
+@media (max-width: 760px) { .diff-cols { grid-template-columns: 1fr; } }
+.diff-col { background: var(--bg); border: 1px solid var(--border); border-radius: var(--r-ctl); padding: 12px; min-width: 0; }
+.diff-col .lbl { display: flex; gap: 8px; align-items: center; font-size: 12.5px; color: var(--muted); margin-bottom: 8px; }
+.diff-col pre.out { border: 0; padding: 0; background: none; }
 del.w { background: var(--fail-bg); color: var(--fail); text-decoration: line-through; border-radius: 3px; padding: 0 2px; }
 ins.w { background: var(--pass-bg); color: var(--pass); text-decoration: underline; text-decoration-thickness: 1px; border-radius: 3px; padding: 0 2px; }
-.chk-table { width: 100%; margin-top: 12px; font-size: 12.5px; }
-.chk-table td { padding: 6px 8px; min-width: 120px; }
+.chk-table { width: 100%; margin-top: 14px; font-size: 13px; }
+.chk-table td { padding: 7px 10px; min-width: 120px; }
+@media (max-width: 640px) { .chk-table td { min-width: 0; padding: 6px; overflow-wrap: anywhere; } }
 .chk-table tr.changed td { background: var(--panel-2); }
-.chk-table tr.changed td:first-child::after { content: " · changed"; color: var(--warn); font-size: 11.5px; }
+.chk-table tr.changed td:first-child::after { content: " · changed"; color: var(--warn); font-size: 12px; }
 
-/* history chart */
-.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--text-2); margin-bottom: 6px; }
-.legend i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+/* ---------- history chart ---------- */
+.legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: 13px; color: var(--text-2); margin-bottom: 8px; }
+.legend i { display: inline-block; width: 16px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 7px; }
 .chart-wrap { position: relative; }
 .chart-wrap svg { display: block; width: 100%; overflow: visible; }
-.chart-wrap text { fill: var(--muted); font-size: 11px; font-family: var(--sans); }
+.chart-wrap text { fill: var(--muted); font-size: 11.5px; font-family: var(--sans); }
 .chart-wrap text.v { fill: var(--text); font-weight: 600; }
-.chart-wrap text.lab { fill: var(--text); font-size: 11.5px; }
+.chart-wrap text.lab { fill: var(--text); font-size: 12px; }
 .tip { position: absolute; pointer-events: none; background: var(--panel-3); border: 1px solid var(--control-border);
-  border-radius: var(--r-ctl); padding: 8px 10px; font-size: 12px; min-width: 180px; display: none; z-index: 2;
-  box-shadow: 0 8px 24px rgba(0,0,0,.4); }
+  border-radius: var(--r-ctl); padding: 10px 12px; font-size: 12.5px; min-width: 190px; display: none; z-index: 2;
+  box-shadow: 0 12px 30px -8px rgba(0, 0, 0, .6); }
 .tip b { font-family: var(--mono); }
 .tip .row { display: flex; justify-content: space-between; gap: 12px; }
 .tip .row span:first-child { color: var(--muted); }
-.git { font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
+.git { font-family: var(--mono); font-size: 12px; color: var(--muted); }
 .git a { color: var(--text-2); text-decoration: underline; text-decoration-color: var(--control-border); }
 .git a:hover { color: var(--text); text-decoration-color: currentColor; }
 .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--fail-bg);
-  border: 1px solid var(--fail); color: var(--text); padding: 10px 16px; border-radius: var(--r-card); display: none;
-  max-width: calc(100% - 32px); z-index: 10; box-shadow: 0 8px 24px rgba(0,0,0,.4); }
+  border: 1px solid var(--fail); color: var(--text); padding: 12px 18px; border-radius: var(--r); display: none;
+  max-width: calc(100% - 32px); z-index: 10; box-shadow: 0 12px 30px -8px rgba(0, 0, 0, .6); }
+footer.colophon { max-width: 1480px; margin: 0 auto; padding: 22px var(--gutter) 40px; border-top: 1px solid var(--border);
+  color: var(--muted); font-size: 13px; display: flex; gap: 8px 24px; flex-wrap: wrap; }
 @media (prefers-reduced-motion: reduce) {
-  .verdict.fresh, tr.new td { animation: none; }
-  .progress div, #verdict-area, .row-toggle .chev { transition: none; }
+  *, *::before, *::after { animation: none !important; transition: none !important; }
 }
 </style>
 </head>
 <body>
 <header>
   <div>
-    <div class="brand"><h1>PARAKH</h1><span class="deva" lang="hi">परख</span></div>
-    <p>Is this prompt or model change safe to ship? <span aria-hidden="true">·</span> project <code id="project">supportbot</code></p>
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 64 64" aria-hidden="true">
+        <!-- assay hallmark: a struck ring around a graded tick -->
+        <circle cx="32" cy="32" r="29" fill="none" stroke="currentColor" stroke-width="2.5"/>
+        <circle cx="32" cy="32" r="23.5" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="2 3"/>
+        <path d="M20.5 33.5 28.5 41 44 23" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <div class="wordmark"><h1>PARAKH</h1><span class="deva" lang="hi">परख</span></div>
+    </div>
+    <p class="tagline">Is this prompt or model change safe to ship? <span class="proj">project <code id="project">supportbot</code></span></p>
   </div>
-  <div class="status">
-    <span class="pill mock">
-      <svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.5" d="M8 1.75 14.5 13.5h-13z M8 6v3.5 M8 11.25v.5"/></svg>
-      Mock model · illustrative data</span>
-    <span class="pill"><span class="dot" id="db-dot"></span><span id="db-label">Connecting to MongoDB…</span></span>
-    <span class="pill"><span class="dot" id="live-dot"></span><span id="live-label">Live updates: connecting</span></span>
-  </div>
+  <dl class="status" aria-label="System status">
+    <dt>Database</dt><dd><span class="dot" id="db-dot"></span><span id="db-label">Connecting to MongoDB…</span></dd>
+    <dt>Updates</dt><dd><span class="dot" id="live-dot"></span><span id="live-label">Live updates: connecting</span></dd>
+    <dt>Data</dt><dd class="mock"><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.5" d="M8 1.75 14.5 13.5h-13z M8 6v3.5 M8 11.25v.5"/></svg>Mock model · illustrative</dd>
+  </dl>
 </header>
 <div class="sr-only" aria-live="polite" id="announce"></div>
 
-<main>
-  <div class="col">
-    <section class="card" id="run-card" aria-labelledby="run-h">
-      <h2 id="run-h"><span class="step" aria-hidden="true">1</span>Run the test set</h2>
-      <label class="field" for="version">Prompt version</label>
-      <select id="version"></select>
-      <p class="hint" id="version-desc"></p>
+<div class="workspace">
+  <section class="card" id="run-card" aria-labelledby="run-h">
+    <h2 id="run-h">Run the test set against a prompt version</h2>
+    <div class="ver-field"><label for="version">Prompt version</label><select id="version"></select></div>
+    <div class="opts">
       <details class="timeouts" id="timeouts-box">
         <summary id="timeouts-sum">Simulate timeouts (none selected)</summary>
         <p class="hint">Selected cases will "time out" instead of answering. A verdict can never call them safe.</p>
@@ -333,51 +422,23 @@ ins.w { background: var(--pass-bg); color: var(--pass); text-decoration: underli
       </details>
       <label class="check-row"><input type="checkbox" id="auto-compare" checked>
         Compare with the baseline when the run finishes</label>
-      <button class="btn primary block" id="run-btn">Run evaluation</button>
-    </section>
+    </div>
+    <div class="go"><button class="btn primary" id="run-btn">Run evaluation</button></div>
+    <p class="hint" id="version-desc"></p>
+  </section>
+</div>
 
-    <section class="card" id="runs-card" aria-labelledby="runs-h">
-      <h2 id="runs-h">Run history <span class="right"><button class="btn small icon-btn" id="refresh-btn" aria-label="Reload runs from MongoDB" title="Reload runs from MongoDB">
-        <svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9 M13.5 2.5v2.75h-2.75"/></svg></button></span></h2>
-      <ul class="runs" id="runs"><li class="empty-state">No runs yet. Start with v1, the baseline.</li></ul>
-    </section>
-
-    <section class="card" id="failure-card" aria-labelledby="fail-h">
-      <h2 id="fail-h">Failure handling</h2>
-      <div class="demo-btns">
-        <button class="btn" id="dup-btn">Re-send a stored result<small>Stable _id + unique index: duplicate ignored</small></button>
-        <button class="btn" id="inc-btn">Send a result without run_id<small>$jsonSchema validator rejects it</small></button>
-        <button class="btn" id="reset-btn">Reset run history<small>Deletes runs and verdicts; keeps prompts and test cases</small></button>
-      </div>
-    </section>
-
-    <section class="card" id="mongo-card">
-      <details class="mongo">
-        <summary>How MongoDB is used</summary>
-        <ul>
-          <li><b>Stable IDs:</b> result <code>_id</code> = hash(run_id, test_case_id); unique index on <code>{run_id, test_case_id}</code> makes re-ingestion safe.</li>
-          <li><b>Schema validation:</b> strict envelope (<code>run_id</code>, <code>status</code>, <code>passed</code>, <code>timestamp</code>…); <code>output</code> and <code>checks</code> stay flexible.</li>
-          <li><b>Aggregation:</b> <code>$group</code> + <code>$switch</code> classifies each test case; <code>$percentile</code> computes p95 latency.</li>
-          <li id="cs-line"><b>Change streams:</b> this page updates as MongoDB writes results.</li>
-          <li><b>Indexes:</b> results by run, latest results per version, recent runs, runs by commit.</li>
-          <li><b>History:</b> every run and verdict is stored, so any two runs can be compared later.</li>
-        </ul>
-        <button class="btn small" id="explain-btn" style="margin-top:10px">Show query plan for the selected run</button>
-        <div id="explain-out" class="hint mono" style="white-space:pre-wrap"></div>
-      </details>
-    </section>
-  </div>
-
+<main>
   <div class="col">
     <section class="card" id="verdict-card" aria-labelledby="verdict-h">
-      <h2 id="verdict-h"><span class="step" aria-hidden="true">2</span>Release verdict</h2>
+      <h2 id="verdict-h">Release verdict</h2>
       <div class="compare-row">
         <div><label class="field" for="baseline">Baseline (current version)</label><select id="baseline"></select></div>
         <div><label class="field" for="candidate">Candidate (proposed change)</label><select id="candidate"></select></div>
         <button class="btn primary" id="compare-btn">Compare</button>
       </div>
       <div class="pending-note" id="pending-note" role="status"></div>
-      <div style="margin-top:14px" id="verdict-area">
+      <div id="verdict-area">
         <div class="verdict empty">Run v1 (the baseline) and another version, then compare them to get a verdict.</div>
       </div>
       <div id="diff-area"></div>
@@ -416,13 +477,45 @@ ins.w { background: var(--pass-bg); color: var(--pass); text-decoration: underli
       <p class="hint">Readiness is a summary, not a verdict: 70 × pass rate + 15 × speed + 15 × cost, relative to the baseline run
         (<span class="mono" id="hist-ref">—</span>). Timeouts count as not passed.</p>
     </section>
+  </div>
+
+  <div class="col rail">
+    <section class="card" id="runs-card" aria-labelledby="runs-h">
+      <h2 id="runs-h">Run history <span class="right"><button class="btn small icon-btn" id="refresh-btn" aria-label="Reload runs from MongoDB" title="Reload runs from MongoDB">
+        <svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9 M13.5 2.5v2.75h-2.75"/></svg></button></span></h2>
+      <ul class="runs" id="runs"><li class="empty-state">No runs yet. Start with v1, the baseline.</li></ul>
+    </section>
+
+    <section class="card" id="mongo-card" aria-labelledby="mongo-h">
+      <h2 id="mongo-h">How MongoDB is used</h2>
+      <ul class="mongo-list">
+        <li><svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" d="M7 3h6M7 17h6M5 7l10 6M5 13l10-6"/></svg><span><b>Stable IDs.</b> Result <code>_id</code> = hash(run_id, test_case_id); a unique index on <code>{run_id, test_case_id}</code> makes re-ingestion safe.</span></li>
+        <li><svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" d="M10 2.5 16.5 5v5c0 4-3 6.5-6.5 7.5C6.5 16.5 3.5 14 3.5 10V5z M7 10l2 2 4-4.5"/></svg><span><b>Schema validation.</b> A strict envelope (<code>run_id</code>, <code>status</code>, <code>passed</code>, <code>timestamp</code>…); <code>output</code> and <code>checks</code> stay flexible.</span></li>
+        <li><svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" d="M3 4h14l-5.5 6.5V16l-3 1.5v-7z"/></svg><span><b>Aggregation.</b> <code>$group</code> + <code>$switch</code> classifies each test case; <code>$percentile</code> computes p95 latency.</span></li>
+        <li><svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" d="M2.5 10h3l2-5 3 10 2-5h5"/></svg><span id="cs-line"><b>Change streams:</b> this page updates as MongoDB writes results.</span></li>
+        <li><svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" d="M4 4v12M4 6h6M4 10h9M4 14h4"/></svg><span><b>Indexes.</b> Results by run, latest results per version, recent runs, runs by commit.</span></li>
+        <li><svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" d="M10 5v5l3 2 M17 10a7 7 0 1 1-2-4.9 M17 3v3h-3"/></svg><span><b>History.</b> Every run and verdict is stored, so any two runs can be compared later.</span></li>
+      </ul>
+      <button class="btn small" id="explain-btn" style="margin-top:16px">Show query plan for the selected run</button>
+      <div id="explain-out" class="hint mono" style="white-space:pre-wrap"></div>
+    </section>
 
     <section class="card" id="log-card" aria-labelledby="log-h">
-      <h2 id="log-h">Live event log <span class="right hint" style="margin:0" id="log-src">MongoDB change stream</span></h2>
+      <h2 id="log-h">Live event log <span class="right hint" style="margin:0 0 0 auto" id="log-src">MongoDB change stream</span></h2>
       <div class="log" id="log" role="log" aria-label="Database events"></div>
+    </section>
+
+    <section class="card" id="failure-card" aria-labelledby="fail-h">
+      <h2 id="fail-h">Failure handling</h2>
+      <div class="demo-btns">
+        <button class="btn" id="dup-btn">Re-send a stored result<small>Stable _id + unique index: duplicate ignored</small></button>
+        <button class="btn" id="inc-btn">Send a result without run_id<small>$jsonSchema validator rejects it</small></button>
+        <button class="btn danger" id="reset-btn">Reset run history<small>Deletes runs and verdicts; keeps prompts and test cases. Asks first.</small></button>
+      </div>
     </section>
   </div>
 </main>
+<footer class="colophon"><span>PARAKH · UNCHARTED 2026, Track 3</span><span>All outputs, latency and cost come from a scripted mock model.</span><span>API docs at <a href="/docs">/docs</a></span></footer>
 <div class="toast" id="toast" role="alert"></div>
 
 <script>
@@ -527,7 +620,7 @@ function renderRuns() {
     // Pass counts are neutral facts, not verdicts; only unverified cases get a warning colour.
     const tag = r.status === "running" ? `<span class="tag running">Running</span>`
       : r.status === "failed" ? `<span class="tag fail">Failed</span>`
-      : s && s.errors ? `<span class="tag warn">${s.passed}/${s.total} · ${s.errors} unverified</span>`
+      : s && s.errors ? `<span class="tag unverified">${s.passed}/${s.total} · ${s.errors} unverified</span>`
       : `<span class="tag neutral">${s ? s.passed + "/" + s.total : "?"} passed</span>`;
     const sel = r._id === state.selectedRun;
     return `<li class="${sel ? "sel" : ""}">
@@ -620,6 +713,7 @@ const VERDICT = {
   NOT_SAFE: { icon: "x", title: "NOT SAFE TO SHIP", sub: "At least one test case that passed in the baseline now fails." },
   INCONCLUSIVE: { icon: "question", title: "INCONCLUSIVE", sub: "Some cases could not be verified, and missing data never counts as a pass. Re-run before deciding." },
 };
+const MARKS = { regressed: ["p", ""], fixed: ["", "p"], still_passing: ["p", "p"], still_failing: ["", ""], unverified: ["u", "u"] };
 const LIMITS = { p95: 25, cost: 30 };  // mirrors GUARD_LATENCY/COST_THRESHOLD_PCT defaults
 
 function runRef(runId, version) {
@@ -637,11 +731,20 @@ function renderVerdict(c, fresh = false) {
   const focusTc = state.diffTc || (c.rows[0] && c.rows[0].test_case_id);
   const cells = c.rows.map((r) => {
     const tc = state.testCases.find((t) => t._id === r.test_case_id);
+    // baseline mark -> candidate mark: filled = passed, hollow = failed, dashed = could not be verified
+    const [bm, cm] = MARKS[r.change];
     return `<button class="cell ${r.change} ${r.test_case_id === state.diffTc ? "sel" : ""}" data-tc="${esc(r.test_case_id)}"
       tabindex="${r.test_case_id === focusTc ? 0 : -1}" aria-label="${esc(r.test_case_id)} ${esc(tc ? tc.name : "")}: ${LABEL[r.change]}. Open side-by-side diff"
-      title="${esc(tc ? tc.name : "")}"><b>${esc(r.test_case_id)}</b>${LABEL[r.change]}</button>`;
+      title="${esc(tc ? tc.name : "")}"><b>${esc(r.test_case_id)}<span class="marks" aria-hidden="true"><i class="m ${bm}"></i><i class="m-arrow"></i><i class="m ${cm}"></i></span></b><span class="lab">${LABEL[r.change]}</span></button>`;
   }).join("");
-  const breach = (pct, limit) => pct > limit ? `delta breach">${fmtPct(pct)} · over the +${limit}% limit` : `delta">${fmtPct(pct)} · limit +${limit}%`;
+  const breach = (pct, limit) => pct > limit ? `delta breach">${fmtPct(pct)} · over the +${limit}% limit` : `delta${pct < 0 ? " better" : ""}">${fmtPct(pct)} · limit +${limit}%`;
+  // the bar spans 0 .. 2x the limit; the tick marks the limit itself
+  const gauge = (pct, limit) => `<div class="gauge ${pct > limit ? "breach" : pct < 0 ? "better" : ""}" aria-hidden="true">
+      <i style="width:${Math.min(100, Math.abs(pct) / (2 * limit) * 100)}%"></i><b style="left:50%"></b></div>
+    <div class="gauge-key" aria-hidden="true"><span>0</span><span>limit +${limit}%</span><span>+${2 * limit}%</span></div>`;
+  const passGauge = `<div class="gauge ${n.passed < b.passed ? "breach" : ""}" aria-hidden="true"><i style="width:${n.total ? n.passed / n.total * 100 : 0}%"></i>
+      <b style="left:calc(${b.total ? b.passed / b.total * 100 : 0}% - 1px)"></b></div>
+    <div class="gauge-key" aria-hidden="true"><span>bar: candidate</span><span>tick: baseline</span></div>`;
   const exitCode = c.verdict === "SAFE" ? 0 : c.verdict === "NOT_SAFE" ? 1 : 2;
   area.innerHTML = `
     <div class="verdict ${c.verdict} ${fresh ? "fresh" : ""}">
@@ -655,15 +758,16 @@ function renderVerdict(c, fresh = false) {
     ${c.warnings && c.warnings.length ? `<div class="warnings">${icon("warn")} ${c.warnings.map(esc).join("; ")}</div>` : ""}
     <div class="counts">${counts}</div>
     <div class="metrics">
-      <div class="metric"><div class="k">Pass rate</div><div class="val">${b.passed}/${b.total} → ${n.passed}/${n.total}</div>
-        <div class="delta">${n.errors ? n.errors + " unverified" : (n.passed === b.passed ? "no change" : (n.passed > b.passed ? "+" : "") + (n.passed - b.passed) + (Math.abs(n.passed - b.passed) === 1 ? " case" : " cases"))}</div></div>
-      <div class="metric"><div class="k">p95 latency</div><div class="val">${b.p95_ms ?? "—"} → ${n.p95_ms ?? "—"} ms</div>
-        <div class="${breach(m.p95_change_pct, LIMITS.p95)}</div></div>
-      <div class="metric"><div class="k">Total cost</div><div class="val">${fmtCost(b.total_cost)} → ${fmtCost(n.total_cost)}</div>
-        <div class="${breach(m.cost_change_pct, LIMITS.cost)}</div></div>
+      <div class="metric"><div class="k">Pass rate</div><div class="val">${b.passed}/${b.total}<span class="arr">→</span>${n.passed}/${n.total}</div>
+        <div class="delta${n.passed < b.passed ? " breach" : ""}">${n.errors ? n.errors + " unverified" : (n.passed === b.passed ? "no change" : (n.passed > b.passed ? "+" : "") + (n.passed - b.passed) + (Math.abs(n.passed - b.passed) === 1 ? " case" : " cases"))}</div>${passGauge}</div>
+      <div class="metric"><div class="k">p95 latency</div><div class="val">${b.p95_ms ?? "—"}<span class="arr">→</span>${n.p95_ms ?? "—"} ms</div>
+        <div class="${breach(m.p95_change_pct, LIMITS.p95)}</div>${gauge(m.p95_change_pct, LIMITS.p95)}</div>
+      <div class="metric"><div class="k">Total cost</div><div class="val">${fmtCost(b.total_cost)}<span class="arr">→</span>${fmtCost(n.total_cost)}</div>
+        <div class="${breach(m.cost_change_pct, LIMITS.cost)}</div>${gauge(m.cost_change_pct, LIMITS.cost)}</div>
     </div>
     <p class="mock-note">${icon("warn")}<span>Latency and cost come from the scripted mock model: illustrative, not real LLM or customer traffic.</span></p>
     <div class="grid-head"><h3>Every test case, baseline → candidate</h3><span class="hint" style="margin:0">Select a case to compare outputs. Arrow keys move.</span></div>
+    <div class="legend-marks" aria-hidden="true"><span><i class="m p"></i>passed</span><span><i class="m"></i>failed</span><span><i class="m u"></i>not verified</span></div>
     <div class="grid12" role="group" aria-label="Test case changes">${cells}</div>
     <div class="foot"><span>CI exit code <code>${exitCode}</code></span><span>comparison <code>${esc(c._id)}</code></span></div>`;
   const cellEls = [...area.querySelectorAll(".cell[data-tc]")];
@@ -787,7 +891,7 @@ function renderHistory() {
     (step >= 52 ? `<text x="${xs(i)}" y="${H - B + 30}" text-anchor="middle">${esc(fmtTime(r.started).slice(0, 5))}</text>` : "")).join("");
   const lines = series.map((s) => {
     const pts = runs.map((r, i) => `${xs(i)},${ys(s.val(r))}`).join(" ");
-    const dots = runs.map((r, i) => `<circle cx="${xs(i)}" cy="${ys(s.val(r))}" r="4.5" fill="${s.color}" stroke="var(--panel)" stroke-width="2"/>`).join("");
+    const dots = runs.map((r, i) => `<circle cx="${xs(i)}" cy="${ys(s.val(r))}" r="4.5" fill="${s.color}" stroke="var(--bg)" stroke-width="2"/>`).join("");
     return (runs.length > 1 ? `<polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>` : "") + dots;
   }).join("");
   // direct labels at the last point; nudge apart if they collide
