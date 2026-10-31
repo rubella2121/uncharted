@@ -63,3 +63,15 @@ def test_every_validator_requires_id_and_project():
 def test_result_payload_fields_stay_flexible():
     props = dbmod.VALIDATORS[config.EVAL_RESULTS]["properties"]
     assert "output" not in props and "checks" not in props
+
+
+def test_plan_stages_flattens_tree():
+    plan = {"stage": "FETCH", "inputStage": {"stage": "IXSCAN", "indexName": "uniq_run_testcase",
+                                             "keyPattern": {"run_id": 1, "test_case_id": 1}}}
+    stages = dbmod._plan_stages(plan)
+    assert [s["stage"] for s in stages] == ["FETCH", "IXSCAN"]
+    assert stages[1]["indexName"] == "uniq_run_testcase"
+
+
+def test_explain_unavailable_on_mongomock(db):
+    assert dbmod.explain_run_lookup(db, "run_x")["available"] is False

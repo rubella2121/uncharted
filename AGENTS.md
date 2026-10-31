@@ -6,7 +6,7 @@ whole file before changing anything, then read `docs/SPEC.md` (what to build) an
 
 ## Project in one line
 
-Prompt Regression Guard answers **"Is this prompt or model change safe to ship?"** by
+PARAKH (Python package and CLI: `guard`) answers **"Is this prompt or model change safe to ship?"** by
 running a test set against prompt versions, storing every result in MongoDB, comparing
 runs with aggregation pipelines, and giving a verdict: SAFE / RISKY / NOT_SAFE /
 INCONCLUSIVE. Hackathon: UNCHARTED 2026, Track 3 (MongoDB). Deadline 31 Oct 2026,
@@ -29,10 +29,23 @@ cp .env.example .env            # then paste the Atlas URI
 python -m pytest -q             # unit tests (mongomock, no network needed)
 python -m guard setup           # create collections, validators, indexes on Atlas
 python -m guard doctor          # verify Atlas: duplicate + validator + index checks
+python -m guard seed            # load data/*.json into Atlas (safe to repeat)
 ```
 
-Later steps add: `python -m guard seed | run <version> | compare <base> <cand>` and
-`uvicorn guard.api:app --reload` for the dashboard.
+Demo flow on the CLI:
+
+```bash
+python -m guard run v1
+python -m guard run v2
+python -m guard compare v1 v2                      # NOT SAFE, exit 1
+python -m guard run v3
+python -m guard compare v1 v3                      # RISKY, exit 2
+python -m guard run v3 --simulate-timeouts tc03,tc05,tc09
+python -m guard compare v1 v3                      # INCONCLUSIVE, exit 2
+python -m guard demo-duplicate                     # duplicate ignored
+python -m guard demo-incomplete                    # rejected by validator (Atlas only)
+python -m guard reset --yes                        # clear run history
+```
 
 ## Layout
 
@@ -41,14 +54,21 @@ guard/config.py      all settings + collection names + thresholds + exit codes
 guard/ids.py         stable_id(), result_id(), comparison_id(), new_run_id(), utcnow()
 guard/db.py          get_db(), VALIDATORS, INDEXES, ensure_schema(), supports_percentile()
 guard/cli.py         typer app (python -m guard ...)
-guard/checks.py      [step 2] run_check(check, output), run_checks(checks, output)
-guard/mock_model.py  [step 3] call_model(prompt_version, test_case, simulate_timeout)
-guard/runner.py      [step 3] run_eval(db, version, simulate_timeouts, run_id, on_result)
-guard/compare.py     [step 4] compare_pipeline(), run_stats(), decide(), compare_runs()
-guard/api.py         [step 5] FastAPI app, REST + SSE (change streams)
-web/index.html       [step 6] single page, plain JS, no build step
-data/*.json          [step 2] prompt versions and test cases
+guard/checks.py      run_check(check, output) -> {type, passed, detail}; run_checks() -> (passed, results)
+guard/seed.py        seed(db): validate data/*.json, then idempotent upsert
+guard/mock_model.py  call_model(prompt_version, test_case, simulate_timeout) + scripted outputs
+guard/runner.py      start_run(), run_eval(db, version, simulate_timeouts=, run_id=, on_result=, delay_s=)
+guard/compare.py     compare_pipeline(), run_stats(), decide(), compare_runs(db, base, cand)
+guard/demo.py        replay_duplicate(), insert_incomplete()  (failure-case demos)
+guard/gitmeta.py     detect(): commit/branch/PR for a run (env vars or local git)
+guard/report.py      markdown_report(): PR comment / job summary for a comparison
+guard/api.py         FastAPI app: REST + /api/stream SSE (change streams); `uvicorn guard.api:app --reload`
+web/index.html       dashboard: single page, plain JS, no build step (REST first, then SSE)
+data/*.json          prompts.json (v1,v2,v3), test_cases.json (tc01..tc30), release.json (PR bot)
 tests/               pytest; conftest.py gives a mongomock `db` fixture
+docs/                SPEC (design), PROGRESS (status), DEPLOY, GITHUB, DEMO_SCRIPT, PPT_OUTLINE
+render.yaml, Dockerfile, Procfile   deployment (always 1 worker)
+.github/workflows/   tests.yml (pytest), prompt-guard.yml (manual gate), prompt-guard-pr.yml (PR bot)
 ```
 
 ## Rules that must not be broken

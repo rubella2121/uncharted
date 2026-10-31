@@ -1,0 +1,1180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PARAKH</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&family=Tiro+Devanagari+Hindi&display=swap" rel="stylesheet">
+<style>
+:root {
+  color-scheme: dark;
+  /* ground: steeped leaf; panels get one step lighter each */
+  --bg: #14100c; --panel: #1c1611; --panel-2: #241c16; --panel-3: #2d241c;
+  --border: #382d23;           /* structural hairlines */
+  --control-border: #806d57;   /* control edges, >= 3:1 on panel and panel-2 */
+  --text: #f4ede3; --text-2: #dbcfbf; --muted: #ab9a83;
+  --amber: #e7a84f; --amber-ink: #1b1107;   /* the brand: assay mark, focus */
+  --focus: #f6c77e;
+  --primary: #f4ede3; --primary-ink: #17110c;   /* porcelain button */
+  /* verdict and case states: each also carries a word or mark */
+  --pass: #93cf86; --pass-bg: #1d2a1a; --pass-line: #3f6b38;
+  --fail: #ff7a66; --fail-bg: #3a1813; --fail-line: #8a3a2e;
+  --warn: #f2b54e; --warn-bg: #36260f; --warn-line: #7a5a22;
+  --unv: #a9b8cf; --unv-bg: #1f232c; --unv-line: #5d6a80;
+  --info: #c3adec; --info-bg: #2a2238;
+  /* chart series: amber vs porcelain blue, apart for colour-blind readers too */
+  --series-score: #e7a84f; --series-pass: #7fb6dd;
+  --sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --mono: "Geist Mono", ui-monospace, "SFMono-Regular", monospace;
+  --deva: "Tiro Devanagari Hindi", serif;
+  --r: 10px; --r-ctl: 7px; --r-tag: 5px;
+  --ease: cubic-bezier(.16, 1, .3, 1);
+  --gutter: clamp(16px, 3vw, 40px);
+}
+* { box-sizing: border-box; }
+html { scrollbar-color: #4a3c2f var(--bg); }
+body { margin: 0; background: var(--bg); color: var(--text);
+  font: 15px/1.55 var(--sans); -webkit-font-smoothing: antialiased; font-feature-settings: "ss01"; }
+::selection { background: #5a4126; color: var(--text); }
+button, select, input { font: inherit; color: inherit; }
+code, .mono { font-family: var(--mono); font-size: max(12px, .9em); }
+a { color: var(--amber); text-underline-offset: 3px; }
+:focus { outline: none; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.ico { width: 1em; height: 1em; flex: none; vertical-align: -0.125em; }
+
+/* ---------- masthead ---------- */
+header { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 24px 40px;
+  padding: 28px var(--gutter) 22px; max-width: 1480px; margin: 0 auto; }
+.brand { display: flex; align-items: center; gap: 18px; }
+.mark { width: 58px; height: 58px; flex: none; color: var(--amber); }
+.wordmark { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+header h1 { margin: 0; font-size: clamp(40px, 5.2vw, 68px); font-weight: 700; letter-spacing: -0.035em; line-height: .95; }
+.brand .deva { font-family: var(--deva); font-size: clamp(24px, 2.6vw, 34px); color: var(--amber); line-height: 1; }
+.tagline { margin: 14px 0 0; font-size: clamp(17px, 1.6vw, 21px); color: var(--text-2); letter-spacing: -0.01em; text-wrap: balance; }
+.tagline .proj { color: var(--muted); font-size: 14px; letter-spacing: 0; white-space: nowrap; }
+.status { display: grid; grid-template-columns: auto auto; gap: 7px 16px; margin: 0; font-size: 13.5px;
+  padding: 14px 18px; border: 1px solid var(--border); border-radius: var(--r); background: var(--panel); min-width: 300px; }
+.status dt { color: var(--muted); }
+.status dd { margin: 0; display: flex; align-items: center; gap: 8px; color: var(--text); }
+.status dd.mock { color: var(--warn); }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--unv); flex: none; }
+.dot.on { background: var(--pass); }
+.dot.off { background: var(--fail); }
+.dot.mid { background: var(--warn); }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px;
+  background: var(--panel-2); border: 1px solid var(--border); font-size: 12.5px; color: var(--text-2); white-space: nowrap;
+  font-variant-numeric: tabular-nums; }
+
+/* ---------- workspace bar ---------- */
+.workspace { max-width: 1480px; margin: 0 auto; padding: 0 var(--gutter); }
+#run-card { display: grid; grid-template-columns: minmax(220px, 340px) minmax(0, 1fr) auto; align-items: end; gap: 6px 24px;
+  padding: 12px 20px; background: var(--panel); border: 1px solid var(--border); border-radius: var(--r); }
+.ver-field { display: grid; gap: 4px; }
+.ver-field label { font-size: 12.5px; color: var(--muted); }
+#run-card .opts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; min-width: 0; }
+#run-card .go { display: flex; align-items: center; gap: 12px; }
+#version-desc { grid-column: 1 / -1; margin: 0; font-size: 12.5px; }
+#timeouts-box { min-width: 0; }
+
+/* ---------- main grid ---------- */
+main { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 28px 40px;
+  padding: 20px var(--gutter) 56px; max-width: 1480px; margin: 0 auto; align-items: start; }
+.col { display: flex; flex-direction: column; gap: 28px; min-width: 0; }
+.rail { gap: 0; }
+.card { min-width: 0; }
+.card > h2 { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 14px;
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.card > h2 .right { margin-left: auto; font-weight: 400; font-size: 13px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-width: 0; }
+.rail .card { padding: 22px 0; border-top: 1px solid var(--border); }
+.rail .card:first-child { padding-top: 0; border-top: 0; }
+.rail .card > h2 { font-size: 15px; }
+#results-card, #history-card { padding-top: 26px; border-top: 1px solid var(--border); }
+#run-title { overflow-wrap: anywhere; min-width: 0; font-weight: 400; color: var(--muted); font-size: 12.5px; }
+label.field { display: block; font-size: 12.5px; font-weight: 500; color: var(--muted); margin: 0 0 5px; }
+.hint { color: var(--muted); font-size: 13px; margin: 6px 0 0; text-wrap: pretty; }
+
+@media (max-width: 1080px) {
+  main { grid-template-columns: minmax(0, 1fr); }
+  .rail .card:first-child { padding-top: 22px; border-top: 1px solid var(--border); }
+}
+@media (max-width: 760px) {
+  header { grid-template-columns: 1fr; padding-top: 24px; padding-bottom: 20px; }
+  .status { min-width: 0; }
+  .mark { width: 44px; height: 44px; }
+  #run-card { grid-template-columns: 1fr; padding: 16px; }
+  #run-card .go { justify-content: stretch; } #run-card .go .btn { flex: 1; }
+  main { padding-top: 20px; }
+}
+
+/* ---------- controls ---------- */
+select { width: 100%; background: var(--panel-2); border: 1px solid var(--control-border); border-radius: var(--r-ctl);
+  padding: 8px 34px 8px 12px; min-height: 40px; appearance: none; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 6l4 4 4-4' fill='none' stroke='%23ab9a83' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center; background-size: 16px; }
+select:hover { border-color: var(--text-2); }
+select option { background: var(--panel-2); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  border: 1px solid var(--control-border); background: transparent; border-radius: var(--r-ctl);
+  padding: 8px 16px; min-height: 40px; cursor: pointer; font-weight: 500;
+  transition: background .15s, border-color .15s, transform .1s; }
+.btn:hover:not(:disabled) { border-color: var(--text-2); background: var(--panel-2); }
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn.primary { background: var(--primary); color: var(--primary-ink); border-color: var(--primary); font-weight: 600; padding: 8px 22px; }
+.btn.primary:hover:not(:disabled) { background: #fff; border-color: #fff; }
+.btn.block { width: 100%; }
+.btn.small { padding: 4px 11px; min-height: 32px; font-size: 13px; }
+.btn.icon-btn { width: 32px; padding: 0; }
+details.timeouts > summary { cursor: pointer; font-size: 13.5px; font-weight: 500; color: var(--text-2); padding: 6px 0;
+  list-style: none; display: inline-flex; align-items: center; gap: 6px; }
+details.timeouts > summary::-webkit-details-marker { display: none; }
+details.timeouts > summary::before { content: ""; width: 7px; height: 7px; border-right: 1.6px solid currentColor;
+  border-bottom: 1.6px solid currentColor; transform: rotate(-45deg); transition: transform .15s; margin-right: 2px; }
+details.timeouts[open] > summary::before { transform: rotate(45deg); }
+details.timeouts > summary:hover { color: var(--text); }
+details.timeouts[open] { flex-basis: 100%; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.chip { position: relative; display: inline-flex; align-items: center; padding: 3px 9px; min-height: 30px;
+  border-radius: var(--r-tag); border: 1px solid var(--control-border); cursor: pointer; font-size: 12.5px;
+  font-family: var(--mono); user-select: none; color: var(--text-2); }
+.chip:hover { border-color: var(--text-2); }
+.chip:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+.chip.on { background: var(--unv-bg); border-color: var(--unv); color: var(--text); font-weight: 500; }
+.chip.on::before { content: ""; width: 7px; height: 7px; border-radius: 50%; border: 1.5px dashed var(--unv); margin-right: 6px; }
+.check-row { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; cursor: pointer; color: var(--text-2); }
+.check-row input { width: 16px; height: 16px; accent-color: var(--amber); margin: 0; }
+
+/* ---------- tags: always a word, never colour alone ---------- */
+.tag { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: var(--r-tag);
+  font-size: 12px; font-weight: 600; letter-spacing: .02em; white-space: nowrap; line-height: 1.55; border: 1px solid transparent; }
+.tag.pass, .tag.fixed { background: var(--pass-bg); color: var(--pass); border-color: var(--pass-line); }
+.tag.fail, .tag.regressed { background: var(--fail-bg); color: var(--fail); border-color: var(--fail-line); }
+.tag.timeout, .tag.error, .tag.unverified { background: var(--unv-bg); color: var(--unv); border: 1px dashed var(--unv-line); }
+.tag.running { background: var(--info-bg); color: var(--info); }
+.tag.still_failing, .tag.warn { background: var(--warn-bg); color: var(--warn); border-color: var(--warn-line); }
+.tag.still_passing, .tag.neutral { background: var(--panel-3); color: var(--text-2); }
+
+/* ---------- verdict: the stamped grade ---------- */
+#verdict-card { background: var(--panel); border: 1px solid var(--border); border-radius: calc(var(--r) + 4px);
+  padding: clamp(18px, 2.4vw, 32px); box-shadow: 0 18px 50px -24px rgba(0, 0, 0, .7); }
+.compare-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; align-items: end; }
+@media (max-width: 640px) { .compare-row { grid-template-columns: 1fr; } }
+#verdict-area { transition: opacity .2s, filter .2s; margin-top: 20px; }
+#verdict-area.stale { opacity: .4; filter: grayscale(1); }
+.pending-note { display: none; align-items: center; gap: 8px; margin-top: 14px; font-size: 13.5px; color: var(--info); }
+.pending-note.on { display: flex; }
+.verdict { --vc: var(--text); --vbg: var(--panel-2);
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 28px; align-items: center; }
+.verdict.SAFE { --vc: var(--pass); --vbg: var(--pass-bg); }
+.verdict.RISKY { --vc: var(--warn); --vbg: var(--warn-bg); }
+.verdict.NOT_SAFE { --vc: var(--fail); --vbg: var(--fail-bg); }
+.verdict.INCONCLUSIVE { --vc: var(--unv); --vbg: var(--unv-bg); }
+.verdict .icon { grid-row: span 2; display: grid; place-items: center; align-self: start;
+  width: 96px; height: 96px; border-radius: 50%; color: var(--vc); background: var(--vbg);
+  border: 2px solid var(--vc); outline: 1px solid var(--vc); outline-offset: 4px; font-size: 46px; transform: rotate(-8deg); }
+.verdict.INCONCLUSIVE .icon { border-style: dashed; }
+.verdict .title { font-size: clamp(32px, 4.4vw, 54px); font-weight: 700; letter-spacing: -0.03em; line-height: 1; color: var(--vc); }
+.verdict .sub { color: var(--text-2); font-size: 16px; max-width: 62ch; text-wrap: pretty; }
+.verdict .runs-line { grid-column: 1 / -1; margin-top: 12px; font-size: 13.5px; color: var(--text-2);
+  padding-top: 14px; border-top: 1px solid var(--border); }
+.verdict ul { grid-column: 1 / -1; margin: 6px 0 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.verdict ul li { display: flex; gap: 10px; align-items: baseline; font-size: 15px; text-wrap: pretty; }
+.verdict ul li::before { content: ""; width: 6px; height: 6px; border-radius: 1px; background: var(--vc); flex: none; transform: translateY(-2px) rotate(45deg); }
+.verdict .actions { grid-column: 1 / -1; margin-top: 8px; }
+.verdict.empty { display: grid; grid-template-columns: auto 1fr; color: var(--muted); padding: 8px 0; font-size: 15px; }
+.verdict.empty::before { content: ""; width: 72px; height: 72px; border-radius: 50%; border: 2px dashed var(--control-border); }
+@keyframes stamp { 0% { opacity: 0; transform: rotate(-8deg) scale(1.35); } 60% { opacity: 1; transform: rotate(-8deg) scale(.96); } 100% { transform: rotate(-8deg) scale(1); } }
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.verdict.fresh .icon { animation: stamp .45s var(--ease); }
+.verdict.fresh .title, .verdict.fresh .sub { animation: rise .4s var(--ease) both; }
+.verdict.fresh .sub { animation-delay: .06s; }
+@media (max-width: 560px) {
+  .verdict { grid-template-columns: 1fr; }
+  .verdict .icon { grid-row: auto; width: 76px; height: 76px; font-size: 32px; }
+}
+details.rules { margin-top: 22px; font-size: 13.5px; color: var(--text-2); border-top: 1px solid var(--border); padding-top: 14px; }
+details.rules > summary { cursor: pointer; color: var(--muted); font-size: 13.5px; font-weight: 500; }
+details.rules > summary:hover { color: var(--text); }
+details.rules dl { display: grid; grid-template-columns: max-content 1fr; gap: 8px 16px; margin: 12px 0 0; }
+details.rules dt { font-weight: 600; font-size: 12.5px; letter-spacing: .03em; } details.rules dd { margin: 0; }
+
+.counts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 18px; }
+.warnings { color: var(--warn); font-size: 13.5px; margin-top: 12px; }
+
+/* measurements: baseline -> candidate, with the delta drawn against its limit */
+.metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; margin-top: 22px;
+  border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.metric { padding: 16px 20px; min-width: 0; }
+.metric:first-child { padding-left: 0; }
+.metric + .metric { border-left: 1px solid var(--border); }
+@media (max-width: 760px) {
+  .metrics { grid-template-columns: 1fr; }
+  .metric, .metric:first-child { padding: 16px 0; }
+  .metric + .metric { border-left: 0; border-top: 1px solid var(--border); }
+}
+.metric .k { color: var(--muted); font-size: 13px; }
+.metric .val { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.metric .val .arr { color: var(--muted); font-weight: 400; margin: 0 .2em; }
+.metric .delta { font-size: 12.5px; font-family: var(--mono); color: var(--muted); margin-top: 2px; }
+.metric .delta.breach { color: var(--warn); }
+.metric .delta.lost { color: var(--fail); }
+.metric .delta.unv { color: var(--unv); }
+.metric .delta.better { color: var(--pass); }
+.gauge { position: relative; height: 6px; margin-top: 12px; border-radius: 3px; background: var(--panel-3); }
+.gauge i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: var(--text-2); transition: width .5s var(--ease); }
+.gauge.breach i { background: var(--warn); }
+.gauge.lost i { background: var(--fail); }
+.gauge.unv i { background: repeating-linear-gradient(90deg, var(--unv) 0 6px, transparent 6px 9px); }
+.gauge.better i { background: var(--pass); }
+.gauge b { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--text); border-radius: 1px; }
+.gauge-key { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-top: 6px; font-family: var(--mono); }
+.mock-note { display: flex; gap: 8px; align-items: baseline; font-size: 13px; color: var(--muted); margin: 12px 0 0; }
+.mock-note .ico { color: var(--warn); }
+
+/* the tasting line: every case, baseline mark -> candidate mark */
+.grid-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; margin-top: 28px; }
+.grid-head h3 { font-size: 16px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
+.legend-marks { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); margin-top: 8px; }
+.legend-marks span { display: inline-flex; align-items: center; gap: 6px; }
+.grid12 { display: grid; grid-template-columns: repeat(15, minmax(0, 1fr)); gap: 14px 4px; margin-top: 14px;
+  padding: 14px 0 12px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+@media (max-width: 900px) { .grid12 { grid-template-columns: repeat(10, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .grid12 { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+.cell { --cc: var(--muted); position: relative; display: grid; justify-items: center; gap: 6px; border-radius: var(--r-ctl);
+  padding: 8px 2px 6px; font: inherit; font-size: 11.5px; color: var(--cc); background: none; border: 1px solid transparent;
+  cursor: pointer; text-align: center; line-height: 1.2; min-height: 64px;
+  transition: opacity .2s var(--ease), background .15s, border-color .15s, transform .2s var(--ease); }
+.cell b { font-family: var(--mono); font-weight: 500; color: var(--text-2); font-size: 12px; display: block; }
+.cell .marks { display: inline-flex; align-items: center; gap: 3px; color: var(--cc); }
+.cell .lab { display: none; }
+.m { width: 10px; height: 10px; border-radius: 50%; display: inline-block; border: 1.5px solid currentColor; }
+.m.p { background: currentColor; }
+.m.u { border-style: dashed; }
+.m-arrow { width: 6px; height: 1px; background: var(--muted); display: inline-block; }
+.cell.regressed { --cc: var(--fail); border-color: var(--fail-line); background: var(--fail-bg); }
+.cell.fixed { --cc: var(--pass); border-color: var(--pass-line); background: var(--pass-bg); }
+.cell.unverified { --cc: var(--unv); border: 1px dashed var(--unv-line); background: var(--unv-bg); }
+.cell.still_failing { --cc: var(--warn); border-color: var(--warn-line); }
+.cell.regressed b, .cell.fixed b, .cell.unverified b, .cell.still_failing b { color: var(--cc); }
+.cell:hover { border-color: var(--control-border); }
+.grid12:has(.cell:hover) .cell:not(:hover):not(.sel), .grid12:has(.cell.sel) .cell:not(.sel):not(:hover) { opacity: .45; }
+.cell.sel { outline: 2px solid var(--text); outline-offset: 2px; transform: translateY(-3px) scale(1.06); z-index: 1; }
+.cell.sel:focus-visible { outline-color: var(--focus); }
+.case-label { margin: 10px 0 0; font-size: 13px; color: var(--muted); min-height: 1.4em; }
+.foot { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 12.5px; color: var(--muted); margin-top: 16px; }
+
+/* ---------- results ---------- */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; font-size: 12.5px; color: var(--muted); font-weight: 500;
+  padding: 10px 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+td { padding: 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+td.num, th.num { text-align: right; }
+td.num { font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 13px; white-space: nowrap; color: var(--text-2); }
+tr.res { cursor: pointer; }
+tr.res:hover td { background: var(--panel); }
+tr.pending td { color: var(--muted); }
+tr.pending .tc-name { opacity: .6; }
+@keyframes arrive { from { background: var(--panel-3); } to { background: transparent; } }
+tr.new td { animation: arrive .5s ease-out; }
+.row-toggle { display: flex; gap: 8px; align-items: flex-start; background: none; border: 0; padding: 0; text-align: left; cursor: pointer; }
+.row-toggle .chev { color: var(--muted); transition: transform .15s; margin-top: 4px; }
+.row-toggle[aria-expanded="true"] .chev { transform: rotate(90deg); }
+.tc-name { font-weight: 500; } .tc-risk { color: var(--muted); font-size: 12.5px; }
+.detail { color: var(--fail); font-size: 13px; }
+.detail code { font-size: 12.5px; }
+.detail.gray { color: var(--unv); }
+tr.expand td { background: var(--panel); padding: 16px 16px 18px 36px; }
+@media (max-width: 640px) {
+  #results-card thead { display: none; }
+  #results-card tbody tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px;
+    border-bottom: 1px solid var(--border); padding: 10px 0; }
+  #results-card tbody td { border: 0; padding: 2px 0; }
+  #results-card tbody td:nth-child(2) { text-align: right; }
+  #results-card tbody td:nth-child(3) { grid-column: 1 / -1; padding-left: 24px; }
+  #results-card tbody td.num { display: none; }
+  #results-card tbody tr.expand td, #results-card tbody td.empty-state { grid-column: 1 / -1; padding-left: 12px; }
+  #results-card .table-wrap { overflow: visible; }
+}
+pre.out { white-space: pre-wrap; word-break: break-word; margin: 0; font-family: var(--mono); font-size: 13px; color: var(--text);
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--r-ctl); padding: 10px 12px; }
+.checklist { margin: 10px 0 0; padding: 0; list-style: none; font-size: 13px; }
+.checklist li { padding: 3px 0; display: flex; gap: 8px; align-items: baseline; }
+.ok-c { color: var(--pass); } .bad-c { color: var(--fail); }
+.progress { height: 3px; background: var(--panel-2); border-radius: 2px; overflow: hidden; margin-bottom: 14px; }
+.progress div { height: 100%; background: var(--amber); width: 0; transition: width .3s var(--ease); }
+.progress.done { visibility: hidden; }
+.empty-state { color: var(--muted); text-align: center; padding: 30px 12px; }
+
+/* ---------- run history: a timeline ---------- */
+.runs { list-style: none; margin: 0; padding: 0 0 0 4px; max-height: 420px; overflow: auto; display: grid; grid-template-columns: minmax(0, 1fr); }
+.runs li { position: relative; border-radius: var(--r-ctl); padding-left: 18px; }
+.runs li:not(.empty-state)::before { content: ""; position: absolute; left: 3px; top: 0; bottom: 0; width: 1px; background: var(--border); }
+.runs li:not(.empty-state)::after { content: ""; position: absolute; left: 0; top: 18px; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--bg); border: 1.5px solid var(--muted); }
+.runs li.sel::after { background: var(--amber); border-color: var(--amber); }
+.runs li.sel .run-btn { background: var(--panel-2); }
+.run-btn { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 4px 12px; width: 100%; padding: 9px 10px;
+  background: none; border: 0; border-radius: var(--r-ctl); cursor: pointer; text-align: left; }
+.run-btn:hover { background: var(--panel); }
+.runs .v { font-weight: 600; font-family: var(--mono); font-size: 14px; }
+.runs .meta { color: var(--muted); font-size: 12.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.runs .meta .mono { font-size: 12px; }
+.runs .gitline { padding: 0 10px 8px 10px; margin-top: -4px; }
+
+/* ---------- operations ---------- */
+.demo-btns { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.demo-btns .btn { justify-content: flex-start; text-align: left; padding: 10px 14px; display: grid; gap: 1px; }
+.demo-btns .btn small { display: block; color: var(--muted); font-weight: 400; font-size: 12.5px; }
+.btn.danger { border-color: var(--fail-line); color: var(--fail); }
+.btn.danger:hover:not(:disabled) { border-color: var(--fail); background: var(--fail-bg); }
+
+/* ---------- MongoDB machinery ---------- */
+.mongo-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; }
+.mongo-list li { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 2px 10px; font-size: 13.5px; color: var(--text-2); }
+.mongo-list li .ico { grid-row: span 2; width: 20px; height: 20px; color: var(--amber); margin-top: 1px; }
+.mongo-list li b { color: var(--text); font-weight: 600; }
+#explain-out { margin-top: 10px; font-size: 12.5px; }
+
+/* ---------- live event log ---------- */
+.log { font-family: var(--mono); font-size: 12.5px; max-height: 260px; overflow: auto; background: #0f0c09;
+  border-radius: var(--r-ctl); padding: 8px 0; border: 1px solid var(--border); }
+.log div { padding: 3px 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-bottom: 1px solid #1d1712; }
+.log div:first-child { animation: arrive .6s ease-out; }
+.log .t { color: var(--muted); margin-right: 6px; }
+.log .ok { color: var(--pass); } .log .bad { color: var(--fail); } .log .warn { color: var(--warn); }
+.log .info { color: var(--info); } .log .ev { color: var(--text-2); } .log .neutral { color: var(--text); }
+.log:empty::before { content: "Waiting for database events…"; color: var(--muted); padding: 0 12px; }
+
+/* ---------- diff view ---------- */
+#diff-area:empty { display: none; }
+.diff { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border); }
+.diff-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.diff-head h3 { margin: 0; font-size: 16px; font-weight: 600; }
+.diff-head .close { margin-left: auto; }
+.diff-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
+@media (max-width: 760px) { .diff-cols { grid-template-columns: 1fr; } }
+.diff-col { border-top: 1px solid var(--border); padding: 12px 0 0; min-width: 0; }
+.diff-col .lbl { display: flex; gap: 8px; align-items: center; font-size: 12.5px; color: var(--muted); margin-bottom: 8px; }
+.diff-col pre.out { border: 0; padding: 0; background: none; }
+del.w { background: var(--fail-bg); color: var(--fail); text-decoration: line-through; border-radius: 3px; padding: 0 2px; }
+ins.w { background: var(--pass-bg); color: var(--pass); text-decoration: underline; text-decoration-thickness: 1px; border-radius: 3px; padding: 0 2px; }
+.chk-table { width: 100%; margin-top: 14px; font-size: 13px; }
+.chk-table td { padding: 7px 10px; min-width: 120px; }
+@media (max-width: 640px) { .chk-table td { min-width: 0; padding: 6px; overflow-wrap: anywhere; } }
+.chk-table tr.changed td { background: var(--panel-2); }
+.chk-table tr.changed td:first-child::after { content: " · changed"; color: var(--warn); font-size: 12px; }
+
+/* ---------- history chart ---------- */
+.legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: 13px; color: var(--text-2); margin-bottom: 8px; }
+.legend i { display: inline-block; width: 16px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 7px; }
+.chart-wrap { position: relative; }
+.chart-wrap svg { display: block; width: 100%; overflow: visible; }
+.chart-wrap text { fill: var(--muted); font-size: 12px; font-family: var(--sans); }
+.chart-wrap text.v { fill: var(--text); font-weight: 600; }
+.chart-wrap text.lab { fill: var(--text); font-size: 12px; }
+.tip { position: absolute; pointer-events: none; background: var(--panel-3); border: 1px solid var(--control-border);
+  border-radius: var(--r-ctl); padding: 10px 12px; font-size: 12.5px; min-width: 190px; display: none; z-index: 2;
+  box-shadow: 0 12px 30px -8px rgba(0, 0, 0, .6); }
+.tip b { font-family: var(--mono); }
+.tip .row { display: flex; justify-content: space-between; gap: 12px; }
+.tip .row span:first-child { color: var(--muted); }
+.git { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.git a { color: var(--text-2); text-decoration: underline; text-decoration-color: var(--control-border); }
+.git a:hover { color: var(--text); text-decoration-color: currentColor; }
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--fail-bg);
+  border: 1px solid var(--fail); color: var(--text); padding: 12px 18px; border-radius: var(--r); display: none;
+  max-width: calc(100% - 32px); z-index: 10; box-shadow: 0 12px 30px -8px rgba(0, 0, 0, .6); }
+footer.colophon { max-width: 1480px; margin: 0 auto; padding: 22px var(--gutter) 40px; border-top: 1px solid var(--border);
+  color: var(--muted); font-size: 13px; display: flex; gap: 8px 24px; flex-wrap: wrap; }
+@media (prefers-reduced-motion: reduce) {
+  /* keep every state change, drop the movement */
+  .verdict.fresh .icon, .verdict.fresh .title, .verdict.fresh .sub, tr.new td, .log div:first-child { animation: none; }
+  .cell, .cell.sel, .btn:active:not(:disabled) { transform: none; }
+  .cell, .gauge i, .progress div, .row-toggle .chev, details.timeouts > summary::before { transition: none; }
+}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 64 64" aria-hidden="true">
+        <!-- a taster's cupping bowl on its saucer: the liquor line is what gets judged -->
+        <path d="M10 24h44c0 14-9.5 24-22 24S10 38 10 24z" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>
+        <path d="M15.5 31.5c5.5 2.2 11 2.2 16.5 0s11-2.2 16.5 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <path d="M18 54h28" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+        <path d="M27 11c-2 3 2 5 0 8M37 11c-2 3 2 5 0 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+      </svg>
+      <div class="wordmark"><h1>PARAKH</h1><span class="deva" lang="hi">परख</span></div>
+    </div>
+    <p class="tagline">Is this prompt or model change safe to ship? <span class="proj">project <code id="project">supportbot</code></span></p>
+  </div>
+  <dl class="status" aria-label="System status">
+    <dt>Database</dt><dd><span class="dot" id="db-dot"></span><span id="db-label">Connecting to MongoDB…</span></dd>
+    <dt>Updates</dt><dd><span class="dot" id="live-dot"></span><span id="live-label">Live updates: connecting</span></dd>
+    <dt>Data</dt><dd class="mock"><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.5" d="M8 1.75 14.5 13.5h-13z M8 6v3.5 M8 11.25v.5"/></svg>Mock model · illustrative</dd>
+  </dl>
+</header>
+<div class="sr-only" aria-live="polite" id="announce"></div>
+
+<div class="workspace">
+  <section class="card" id="run-card" aria-labelledby="run-h">
+    <h2 id="run-h" class="sr-only">Run the test set against a prompt version</h2>
+    <div class="ver-field"><label for="version">Prompt version</label><select id="version"></select></div>
+    <div class="opts">
+      <details class="timeouts" id="timeouts-box">
+        <summary id="timeouts-sum">Simulate timeouts (none selected)</summary>
+        <p class="hint">Selected cases will "time out" instead of answering. A verdict can never call them safe.</p>
+        <div class="chips" id="timeouts" role="group" aria-label="Test cases to time out"></div>
+      </details>
+      <label class="check-row"><input type="checkbox" id="auto-compare" checked>
+        Compare with the baseline when the run finishes</label>
+    </div>
+    <div class="go"><button class="btn primary" id="run-btn">Run evaluation</button></div>
+    <p class="hint" id="version-desc"></p>
+  </section>
+</div>
+
+<main>
+  <div class="col">
+    <section class="card" id="verdict-card" aria-labelledby="verdict-h">
+      <h2 id="verdict-h" class="sr-only">Release verdict</h2>
+      <div class="compare-row">
+        <div><label class="field" for="baseline">Baseline (current version)</label><select id="baseline"></select></div>
+        <div><label class="field" for="candidate">Candidate (proposed change)</label><select id="candidate"></select></div>
+        <button class="btn primary" id="compare-btn">Compare</button>
+      </div>
+      <div class="pending-note" id="pending-note" role="status"></div>
+      <div id="verdict-area">
+        <div class="verdict empty">Run v1 (the baseline) and another version, then compare them to get a verdict.</div>
+      </div>
+      <div id="diff-area"></div>
+      <details class="rules">
+        <summary>How the verdict is decided</summary>
+        <dl>
+          <dt>NOT SAFE</dt><dd>Any test case that passed in the baseline fails in the candidate. A regression always wins, even if other data is missing.</dd>
+          <dt>INCONCLUSIVE</dt><dd>Some cases timed out or errored, so they could not be verified. Missing data never counts as a pass.</dd>
+          <dt>RISKY</dt><dd>No regressions, but p95 latency rose more than 25% or total cost more than 30%.</dd>
+          <dt>SAFE</dt><dd>No regressions, every case verified, latency and cost within limits.</dd>
+          <dt>Data</dt><dd>Every output, latency and cost here comes from a scripted, deterministic mock model, so the demo is reproducible. No real LLM or customer data is involved.</dd>
+        </dl>
+      </details>
+    </section>
+
+    <section class="card" id="results-card" aria-labelledby="results-h">
+      <h2 id="results-h">Results <span id="run-title" class="mono"></span>
+        <span class="right" id="run-summary"></span></h2>
+      <div class="progress" aria-hidden="true"><div id="progress-bar"></div></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th scope="col">Test case</th><th scope="col">Result</th><th scope="col">Why it failed</th><th scope="col" class="num">Latency</th><th scope="col" class="num">Cost</th></tr></thead>
+          <tbody id="results"><tr><td colspan="5" class="empty-state">Select a run in Run history, or start one.</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card" id="history-card" aria-labelledby="hist-h">
+      <h2 id="hist-h">Version history <span class="right"><button class="btn small" id="hist-table-btn" aria-expanded="false" aria-controls="hist-table">Show as table</button></span></h2>
+      <div class="legend" id="hist-legend">
+        <span><i style="background:var(--series-score)"></i>Readiness score (0–100)</span>
+        <span><i style="background:var(--series-pass)"></i>Pass rate (%)</span>
+      </div>
+      <div class="chart-wrap" id="hist-chart"><div class="empty-state">Run a version to start the history.</div></div>
+      <div id="hist-table" class="table-wrap" style="display:none;margin-top:10px"></div>
+      <p class="hint">Readiness is a summary, not a verdict: 70 × pass rate + 15 × speed + 15 × cost, relative to the baseline run
+        (<span class="mono" id="hist-ref">—</span>). Timeouts count as not passed.</p>
+    </section>
+  </div>
+
+  <div class="col rail">
+    <section class="card" id="runs-card" aria-labelledby="runs-h">
+      <h2 id="runs-h">Run history <span class="right"><button class="btn small icon-btn" id="refresh-btn" aria-label="Reload runs from MongoDB" title="Reload runs from MongoDB">
+        <svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9 M13.5 2.5v2.75h-2.75"/></svg></button></span></h2>
+      <ul class="runs" id="runs"><li class="empty-state">No runs yet. Start with v1, the baseline.</li></ul>
+    </section>
+
+    <section class="card" id="mongo-card" aria-labelledby="mongo-h">
+      <h2 id="mongo-h">How MongoDB is used</h2>
+      <ul class="mongo-list">
+        <li><svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" d="M7 3h6M7 17h6M5 7l10 6M5 13l10-6"/></svg><span><b>Stable IDs.</b> Result <code>_id</code> = hash(run_id, test_case_id); a unique index on <code>{run_id, test_case_id}</code> makes re-ingestion safe.</span></li>
+        <li><svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" d="M10 2.5 16.5 5v5c0 4-3 6.5-6.5 7.5C6.5 16.5 3.5 14 3.5 10V5z M7 10l2 2 4-4.5"/></svg><span><b>Schema validation.</b> A strict envelope (<code>run_id</code>, <code>status</code>, <code>passed</code>, <code>timestamp</code>…); <code>output</code> and <code>checks</code> stay flexible.</span></li>
+        <li><svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" d="M3 4h14l-5.5 6.5V16l-3 1.5v-7z"/></svg><span><b>Aggregation.</b> <code>$group</code> + <code>$switch</code> classifies each test case; <code>$percentile</code> computes p95 latency.</span></li>
+        <li><svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" d="M2.5 10h3l2-5 3 10 2-5h5"/></svg><span id="cs-line"><b>Change streams:</b> this page updates as MongoDB writes results.</span></li>
+        <li><svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" d="M4 4v12M4 6h6M4 10h9M4 14h4"/></svg><span><b>Indexes.</b> Results by run, latest results per version, recent runs, runs by commit.</span></li>
+        <li><svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" d="M10 5v5l3 2 M17 10a7 7 0 1 1-2-4.9 M17 3v3h-3"/></svg><span><b>History.</b> Every run and verdict is stored, so any two runs can be compared later.</span></li>
+      </ul>
+      <button class="btn small" id="explain-btn" style="margin-top:16px">Show query plan for the selected run</button>
+      <div id="explain-out" class="hint mono" style="white-space:pre-wrap"></div>
+    </section>
+
+    <section class="card" id="log-card" aria-labelledby="log-h">
+      <h2 id="log-h">Live event log <span class="right hint" style="margin:0 0 0 auto" id="log-src">MongoDB change stream</span></h2>
+      <div class="log" id="log" role="log" aria-label="Database events"></div>
+    </section>
+
+    <section class="card" id="failure-card" aria-labelledby="fail-h">
+      <h2 id="fail-h">Failure handling</h2>
+      <div class="demo-btns">
+        <button class="btn" id="dup-btn">Re-send a stored result<small>Stable _id + unique index: duplicate ignored</small></button>
+        <button class="btn" id="inc-btn">Send a result without run_id<small>$jsonSchema validator rejects it</small></button>
+        <button class="btn danger" id="reset-btn">Reset run history<small>Deletes runs and verdicts; keeps prompts and test cases. Asks first.</small></button>
+      </div>
+    </section>
+  </div>
+</main>
+<footer class="colophon"><span>PARAKH · UNCHARTED 2026, Track 3</span><span>All outputs, latency and cost come from a scripted mock model.</span><span>API docs at <a href="/docs">/docs</a></span></footer>
+<div class="toast" id="toast" role="alert"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+const state = {
+  versions: [], testCases: [], runs: new Map(), results: new Map(),  // run_id -> Map(tc -> doc)
+  selectedRun: null, expanded: new Set(), myRuns: new Set(), comparison: null,
+  mode: "connecting", pollTimer: null, history: null, diffTc: null,
+};
+
+async function api(path, opts = {}) {
+  const res = await fetch(path, { headers: { "Content-Type": "application/json" }, ...opts });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) throw new Error((body && body.detail) || `HTTP ${res.status}`);
+  return body;
+}
+function toast(msg) {
+  const t = $("toast"); t.textContent = msg; t.style.display = "block";
+  clearTimeout(toast.timer); toast.timer = setTimeout(() => (t.style.display = "none"), 4500);
+}
+function log(html, cls = "") {
+  const el = $("log"), line = document.createElement("div");
+  line.innerHTML = `<span class="t">${new Date().toLocaleTimeString()}</span> <span class="${cls}">${html}</span>`;
+  el.prepend(line);
+  while (el.children.length > 80) el.lastChild.remove();
+}
+const fmtTime = (iso) => iso ? new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "";
+const fmtCost = (c) => c == null ? "—" : "$" + Number(c).toFixed(6);
+const fmtPct = (p) => (p > 0 ? "+" : "") + Math.round(p) + "%";
+const announce = (msg) => { $("announce").textContent = ""; setTimeout(() => ($("announce").textContent = msg), 50); };
+
+// One stroke icon set (16px grid, 1.5 stroke) instead of emoji glyphs.
+const ICON_PATHS = {
+  check: "M3 8.5 6.5 12 13 4.5",
+  x: "M4 4l8 8M12 4l-8 8",
+  warn: "M8 1.75 14.5 13.5h-13z M8 6v3.5 M8 11.25v.5",
+  question: "M5.75 6a2.25 2.25 0 1 1 3.1 2.08c-.5.22-.85.66-.85 1.2v.47 M8 12.25v.5",
+  dash: "M4 8h8",
+  chevron: "M6 4l4 4-4 4",
+  branch: "M5 2.5v11 M11 2.75a1.5 1.5 0 1 1 0 3a1.5 1.5 0 1 1 0-3 M11 5.75c0 3.25-6 2-6 5.25",
+};
+const icon = (name, cls = "ico") => `<svg class="${cls}" viewBox="0 0 16 16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="${ICON_PATHS[name]}"/></svg>`;
+const STATUS_LABEL = { running: "Running", completed: "Completed", completed_with_errors: "Completed with unverified cases", failed: "Failed" };
+const STATUS_TAG = { running: "running", completed: "neutral", completed_with_errors: "warn", failed: "fail" };
+
+/* ---------- rendering ---------- */
+
+function renderVersions() {
+  const sel = $("version");
+  sel.innerHTML = state.versions.map((v) =>
+    `<option value="${esc(v.version)}">${esc(v.version)} · ${esc(v.model)}</option>`).join("");
+  const showDesc = () => {
+    const v = state.versions.find((x) => x.version === sel.value);
+    $("version-desc").textContent = v ? `${v.description || ""} (${v.prompt_text.split(/\s+/).length}-word prompt)` : "";
+  };
+  sel.onchange = showDesc; showDesc();
+  $("timeouts").innerHTML = state.testCases.map((tc) =>
+    `<label class="chip" title="${esc(tc.name)}"><input class="sr-only" type="checkbox" value="${esc(tc._id)}" aria-label="${esc(tc._id)}: ${esc(tc.name)}">${esc(tc._id)}</label>`).join("");
+  $("timeouts").querySelectorAll("input").forEach((i) =>
+    i.onchange = () => { i.parentElement.classList.toggle("on", i.checked); updateTimeoutSummary(); });
+  updateTimeoutSummary();
+}
+
+function updateTimeoutSummary() {
+  const n = $("timeouts").querySelectorAll("input:checked").length;
+  $("timeouts-sum").textContent = `Simulate timeouts (${n ? n + " selected" : "none selected"})`;
+}
+
+function sortedRuns() {
+  return [...state.runs.values()].sort((a, b) => (b.started_at || "").localeCompare(a.started_at || ""));
+}
+
+function runNumber(runId) {
+  // Stable ordinal by start time (#1 = oldest) so runs started in the same second stay distinguishable.
+  const ordered = [...state.runs.values()].sort((a, b) => (a.started_at || "").localeCompare(b.started_at || ""));
+  return ordered.findIndex((r) => r._id === runId) + 1;
+}
+
+function runLabel(r) {
+  const s = r.summary;
+  const score = s ? `${s.passed}/${s.total} passed` : "…";
+  return `#${runNumber(r._id)} · ${r.prompt_version} · ${fmtTime(r.started_at)} · ${score}${s && s.errors ? ` · ${s.errors} unverified` : ""}`;
+}
+
+function gitLabel(git) {
+  // "a1b2c3d · PR #4" with links to GitHub; empty when the run has no git metadata.
+  if (!git) return "";
+  const stop = 'onclick="event.stopPropagation()" target="_blank" rel="noopener"';
+  const sha = git.commit_url ? `<a href="${esc(git.commit_url)}" ${stop}>${esc(git.short)}</a>` : esc(git.short);
+  const pr = git.pr ? (git.pr_url ? ` · <a href="${esc(git.pr_url)}" ${stop}>PR #${git.pr}</a>` : ` · PR #${git.pr}`) : "";
+  const src = git.source === "github-actions" ? " · CI" : "";
+  return `<span class="git" title="${esc(git.branch || "")}">${icon("branch")} ${sha}${pr}${src}</span>`;
+}
+
+function renderRuns() {
+  const list = sortedRuns();
+  $("runs").innerHTML = list.length ? list.map((r) => {
+    const s = r.summary;
+    // Pass counts are neutral facts, not verdicts; only unverified cases get a warning colour.
+    const tag = r.status === "running" ? `<span class="tag running">Running</span>`
+      : r.status === "failed" ? `<span class="tag fail">Failed</span>`
+      : s && s.errors ? `<span class="tag unverified">${s.passed}/${s.total} · ${s.errors} unverified</span>`
+      : `<span class="tag neutral">${s ? s.passed + "/" + s.total : "?"} passed</span>`;
+    const sel = r._id === state.selectedRun;
+    return `<li class="${sel ? "sel" : ""}">
+      <button class="run-btn" data-id="${esc(r._id)}" aria-pressed="${sel}">
+        <span class="v">${esc(r.prompt_version)}</span>
+        <span class="meta">#${runNumber(r._id)} · ${fmtTime(r.started_at)}<br><span class="mono">${esc(r._id)}</span></span>${tag}</button>
+      ${r.git ? `<div class="gitline">${gitLabel(r.git)}</div>` : ""}</li>`;
+  }).join("") : `<li class="empty-state">No runs yet. Start with v1, the baseline.</li>`;
+  $("runs").querySelectorAll(".run-btn").forEach((b) => b.onclick = () => selectRun(b.dataset.id));
+
+  // compare selectors: finished runs only
+  const finished = list.filter((r) => r.status === "completed" || r.status === "completed_with_errors");
+  for (const id of ["baseline", "candidate"]) {
+    const sel = $(id), prev = sel.value;
+    sel.innerHTML = finished.length ? finished.map((r) =>
+      `<option value="${esc(r._id)}">${esc(runLabel(r))}</option>`).join("") : `<option value="">no finished runs</option>`;
+    if (finished.some((r) => r._id === prev)) sel.value = prev;
+  }
+  // Default selection mirrors the verdict on screen, so selectors and verdict never disagree.
+  const c = state.comparison, has = (id) => finished.some((r) => r._id === id);
+  if (!$("baseline").dataset.touched) {
+    const base = (c && has(c.baseline_run) && c.baseline_run)
+      || (finished.find((r) => r.prompt_version === "v1") || finished[finished.length - 1] || {})._id;
+    if (base) $("baseline").value = base;
+  }
+  if (!$("candidate").dataset.touched) {
+    const cand = (c && has(c.candidate_run) && c.candidate_run) || (finished[0] || {})._id;
+    if (cand) $("candidate").value = cand;
+  }
+  $("compare-btn").disabled = finished.length < 2;
+}
+
+function renderResults() {
+  const run = state.runs.get(state.selectedRun);
+  const body = $("results");
+  if (!run) { body.innerHTML = `<tr><td colspan="5" class="empty-state">Select or start a run</td></tr>`; return; }
+  const results = state.results.get(run._id) || new Map();
+  $("run-title").textContent = `#${runNumber(run._id)} · ${run.prompt_version} · ${run._id}`;
+  const passed = [...results.values()].filter((r) => r.passed).length;
+  const errors = [...results.values()].filter((r) => r.status !== "ok").length;
+  const total = state.testCases.length || run.test_set_size || 12;
+  $("run-summary").innerHTML = `<span class="tag ${STATUS_TAG[run.status] || "neutral"}">${esc(STATUS_LABEL[run.status] || run.status)}</span>
+    <span class="pill">${passed}/${results.size} passed${errors ? ` · ${errors} unverified` : ""}</span>`;
+  $("progress-bar").style.width = `${Math.min(100, (results.size / total) * 100)}%`;
+  $("progress-bar").parentElement.classList.toggle("done", run.status !== "running");
+
+  const rows = [];
+  for (const tc of state.testCases) {
+    const r = results.get(tc._id);
+    if (!r) {
+      rows.push(`<tr class="pending"><td><div class="tc-name">${esc(tc._id)} · ${esc(tc.name)}</div><div class="tc-risk">${esc(tc.risk || "")}</div></td>
+        <td>${run.status === "running" ? "Waiting…" : "—"}</td><td></td><td class="num"></td><td class="num"></td></tr>`);
+      continue;
+    }
+    const ok = r.status === "ok";
+    const tag = !ok ? `<span class="tag ${r.status}">${icon("dash")}${r.status === "timeout" ? "TIMEOUT" : "ERROR"}</span>`
+      : r.passed ? `<span class="tag pass">${icon("check")}PASS</span>` : `<span class="tag fail">${icon("x")}FAIL</span>`;
+    const why = !ok ? `<span class="detail gray">${esc(r.error)} (unverified)</span>`
+      : (r.checks || []).filter((c) => !c.passed).map((c) => `<div class="detail"><code>${esc(c.type)}</code>: ${esc(c.detail)}</div>`).join("");
+    const open = state.expanded.has(tc._id);
+    rows.push(`<tr class="res ${r._fresh ? "new" : ""}" data-tc="${esc(tc._id)}">
+      <td><button class="row-toggle" aria-expanded="${open}"${open ? ` aria-controls="exp-${esc(tc._id)}"` : ""}>${icon("chevron", "ico chev")}<span>
+        <span class="tc-name">${esc(tc._id)} · ${esc(tc.name)}</span><span class="tc-risk" style="display:block">${esc(tc.risk || "")}</span></span></button></td>
+      <td>${tag}</td><td>${why}</td>
+      <td class="num">${ok ? r.latency_ms + " ms" : "—"}</td><td class="num">${fmtCost(r.cost_usd)}</td></tr>`);
+    r._fresh = false;
+    if (state.expanded.has(tc._id)) {
+      const checks = (r.checks || []).map((c) =>
+        `<li><span class="${c.passed ? "ok-c" : "bad-c"}">${icon(c.passed ? "check" : "x")}<span class="sr-only">${c.passed ? "passed" : "failed"}</span></span><code>${esc(c.type)}</code> ${esc(c.detail)}</li>`).join("");
+      rows.push(`<tr class="expand" id="exp-${esc(tc._id)}"><td colspan="5"><div class="hint" style="margin:0 0 4px">Customer input</div>
+        <pre class="out">${esc(tc.input)}</pre><div class="hint" style="margin:10px 0 4px">Model output</div>
+        <pre class="out">${esc(r.output ?? "(no output: " + r.status + ")")}</pre><ul class="checklist">${checks}</ul>
+        <div class="hint mono">${r.latency_ms != null ? r.latency_ms + " ms" : "no latency (unverified)"} · ${fmtCost(r.cost_usd)} · ${r.tokens_in ?? "—"} in / ${r.tokens_out ?? "—"} out tokens · _id ${esc(r._id)}</div></td></tr>`);
+    }
+  }
+  body.innerHTML = rows.join("");
+  body.querySelectorAll("tr.res").forEach((tr) => tr.onclick = (e) => {
+    if (e.target.closest("a")) return;
+    const id = tr.dataset.tc;
+    state.expanded.has(id) ? state.expanded.delete(id) : state.expanded.add(id);
+    renderResults();
+    const again = body.querySelector(`tr.res[data-tc="${CSS.escape(id)}"] .row-toggle`);
+    if (again && e.target.closest(".row-toggle")) again.focus();  // keep keyboard focus after re-render
+  });
+}
+
+const VERDICT = {
+  SAFE: { icon: "check", title: "SAFE TO SHIP", sub: "No regressions, every case verified, latency and cost within limits." },
+  RISKY: { icon: "warn", title: "RISKY", sub: "Quality held, but it is noticeably slower or more expensive. Ship only if the trade-off is worth it." },
+  NOT_SAFE: { icon: "x", title: "NOT SAFE TO SHIP", sub: "At least one test case that passed in the baseline now fails." },
+  INCONCLUSIVE: { icon: "question", title: "INCONCLUSIVE", sub: "Some cases could not be verified, and missing data never counts as a pass. Re-run before deciding." },
+};
+function nameCase(el) {  // the compact line shows ids only; the focused or hovered case names itself below it
+  const out = $("case-label");
+  if (!out) return;
+  out.textContent = el ? `${el.dataset.tc} · ${el.title} · ${el.querySelector(".lab").textContent}` : "Hover or select a case to see what it tests.";
+}
+const MARKS = { regressed: ["p", ""], fixed: ["", "p"], still_passing: ["p", "p"], still_failing: ["", ""], unverified: ["u", "u"] };
+const LIMITS = { p95: 25, cost: 30 };  // mirrors GUARD_LATENCY/COST_THRESHOLD_PCT defaults
+
+function runRef(runId, version) {
+  const r = state.runs.get(runId);
+  return `<code>#${runNumber(runId) || "?"}</code> ${esc(version)}${r ? " · " + esc(fmtTime(r.started_at)) : ""}`;
+}
+
+function renderVerdict(c, fresh = false) {
+  const area = $("verdict-area");
+  if (!c) { area.innerHTML = `<div class="verdict empty">Run two versions, then compare them to get a verdict.</div>`; return; }
+  const v = VERDICT[c.verdict], m = c.metrics, b = m.baseline, n = m.candidate;
+  const LABEL = { regressed: "regressed", fixed: "fixed", still_passing: "still passing", still_failing: "still failing", unverified: "unverified" };
+  const counts = ["regressed", "unverified", "fixed", "still_failing", "still_passing"].filter((k) => c.counts[k] > 0)
+    .map((k) => `<span class="tag ${k}">${c.counts[k]} ${LABEL[k]}</span>`).join("");
+  const focusTc = state.diffTc || (c.rows[0] && c.rows[0].test_case_id);
+  const cells = c.rows.map((r) => {
+    const tc = state.testCases.find((t) => t._id === r.test_case_id);
+    // baseline mark -> candidate mark: filled = passed, hollow = failed, dashed = could not be verified
+    const [bm, cm] = MARKS[r.change];
+    return `<button class="cell ${r.change} ${r.test_case_id === state.diffTc ? "sel" : ""}" data-tc="${esc(r.test_case_id)}"
+      tabindex="${r.test_case_id === focusTc ? 0 : -1}" aria-label="${esc(r.test_case_id)} ${esc(tc ? tc.name : "")}: ${LABEL[r.change]}. Open side-by-side diff"
+      title="${esc(tc ? tc.name : "")}"><b>${esc(r.test_case_id)}<span class="marks" aria-hidden="true"><i class="m ${bm}"></i><i class="m-arrow"></i><i class="m ${cm}"></i></span></b><span class="lab">${LABEL[r.change]}</span></button>`;
+  }).join("");
+  const breach = (pct, limit) => pct > limit ? `delta breach">${fmtPct(pct)} · over the +${limit}% limit` : `delta${pct < 0 ? " better" : ""}">${fmtPct(pct)} · limit +${limit}%`;
+  // the bar spans 0 .. 2x the limit; the tick marks the limit itself
+  const gauge = (pct, limit) => `<div class="gauge ${pct > limit ? "breach" : pct < 0 ? "better" : ""}" aria-hidden="true">
+      <i style="width:${Math.min(100, Math.abs(pct) / (2 * limit) * 100)}%"></i><b style="left:50%"></b></div>
+    <div class="gauge-key" aria-hidden="true"><span>0</span><span>limit +${limit}%</span><span>+${2 * limit}%</span></div>`;
+  const passCls = n.errors ? "unv" : n.passed < b.passed ? "lost" : "";
+  const passGauge = `<div class="gauge ${passCls}" aria-hidden="true"><i style="width:${n.total ? n.passed / n.total * 100 : 0}%"></i>
+      <b style="left:calc(${b.total ? b.passed / b.total * 100 : 0}% - 1px)"></b></div>
+    <div class="gauge-key" aria-hidden="true"><span>bar: candidate</span><span>tick: baseline</span></div>`;
+  const exitCode = c.verdict === "SAFE" ? 0 : c.verdict === "NOT_SAFE" ? 1 : 2;
+  area.innerHTML = `
+    <div class="verdict ${c.verdict} ${fresh ? "fresh" : ""}">
+      <div class="icon">${icon(v.icon)}</div><div class="title">${v.title}</div>
+      <div class="sub">${v.sub}</div>
+      <div class="runs-line">Compared baseline ${runRef(c.baseline_run, c.baseline_version)} → candidate ${runRef(c.candidate_run, c.candidate_version)}
+        ${c.candidate_git ? ` · built from ${gitLabel(c.candidate_git)}` : ""}</div>
+      <ul>${c.reasons.map((r) => `<li>${esc(r)}</li>`).join("")}</ul>
+      ${c.verdict === "INCONCLUSIVE" ? `<div class="actions"><button class="btn small" id="rerun-btn">Re-run ${esc(c.candidate_version)} without timeouts</button></div>` : ""}
+    </div>
+    ${c.warnings && c.warnings.length ? `<div class="warnings">${icon("warn")} ${c.warnings.map(esc).join("; ")}</div>` : ""}
+    <div class="counts">${counts}</div>
+    <div class="metrics">
+      <div class="metric"><div class="k">Pass rate</div><div class="val">${b.passed}/${b.total}<span class="arr">→</span>${n.passed}/${n.total}</div>
+        <div class="delta ${passCls}">${n.errors ? n.errors + " unverified" : (n.passed === b.passed ? "no change" : (n.passed > b.passed ? "+" : "") + (n.passed - b.passed) + (Math.abs(n.passed - b.passed) === 1 ? " case" : " cases"))}</div>${passGauge}</div>
+      <div class="metric"><div class="k">p95 latency</div><div class="val">${b.p95_ms ?? "—"}<span class="arr">→</span>${n.p95_ms ?? "—"} ms</div>
+        <div class="${breach(m.p95_change_pct, LIMITS.p95)}</div>${gauge(m.p95_change_pct, LIMITS.p95)}</div>
+      <div class="metric"><div class="k">Total cost</div><div class="val">${fmtCost(b.total_cost)}<span class="arr">→</span>${fmtCost(n.total_cost)}</div>
+        <div class="${breach(m.cost_change_pct, LIMITS.cost)}</div>${gauge(m.cost_change_pct, LIMITS.cost)}</div>
+    </div>
+    <p class="mock-note">${icon("warn")}<span>Latency and cost come from the scripted mock model: illustrative, not real LLM or customer traffic.</span></p>
+    <div class="grid-head"><h3>Every test case, baseline → candidate</h3><span class="hint" style="margin:0">Select a case to compare outputs. Arrow keys move.</span></div>
+    <div class="legend-marks" aria-hidden="true"><span><i class="m p"></i>passed</span><span><i class="m"></i>failed</span><span><i class="m u"></i>not verified</span></div>
+    <div class="grid12" role="group" aria-label="Test case changes">${cells}</div>
+    <p class="case-label" id="case-label" aria-hidden="true"></p>
+    <div class="foot"><span>CI exit code <code>${exitCode}</code></span><span>comparison <code>${esc(c._id)}</code></span></div>`;
+  const cellEls = [...area.querySelectorAll(".cell[data-tc]")];
+  cellEls.forEach((el, i) => {
+    el.onclick = () => openDiff(el.dataset.tc, true);
+    el.onmouseenter = el.onfocus = () => nameCase(el);
+    el.onmouseleave = el.onblur = () => nameCase(area.querySelector(".cell.sel"));
+    el.onkeydown = (e) => {  // one tab stop for the grid; arrows move within it
+      const cols = Math.max(1, Math.round(el.parentElement.clientWidth / el.offsetWidth));
+      const step = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: cols, ArrowUp: -cols, Home: -i, End: cellEls.length - 1 - i }[e.key];
+      if (step === undefined) return;
+      e.preventDefault();
+      const next = cellEls[Math.min(cellEls.length - 1, Math.max(0, i + step))];
+      cellEls.forEach((x) => (x.tabIndex = -1)); next.tabIndex = 0; next.focus();
+    };
+  });
+  const rerun = $("rerun-btn");
+  if (rerun) rerun.onclick = () => startRun(c.candidate_version, []);
+  if (fresh) announce(`Verdict: ${v.title}. ${c.reasons.join(". ")}`);
+  if (fresh) {  // a new verdict: open the first regression (or close a stale diff)
+    const first = c.rows.find((r) => r.change === "regressed") || c.rows.find((r) => r.change === "unverified");
+    first ? openDiff(first.test_case_id) : closeDiff();
+  } else if (state.diffTc) openDiff(state.diffTc);
+}
+
+/* ---------- diff view ---------- */
+
+function wordDiff(a, b) {
+  // Word-level LCS: returns [{t, op}] with op in same | del | add.
+  const x = (a || "").split(/\s+/).filter(Boolean), y = (b || "").split(/\s+/).filter(Boolean);
+  const n = x.length, m = y.length, dp = Array.from({ length: n + 1 }, () => new Uint16Array(m + 1));
+  for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--)
+    dp[i][j] = x[i] === y[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+  const out = []; let i = 0, j = 0;
+  while (i < n && j < m) {
+    if (x[i] === y[j]) { out.push({ t: x[i], op: "same" }); i++; j++; }
+    else if (dp[i + 1][j] >= dp[i][j + 1]) out.push({ t: x[i++], op: "del" });
+    else out.push({ t: y[j++], op: "add" });
+  }
+  while (i < n) out.push({ t: x[i++], op: "del" });
+  while (j < m) out.push({ t: y[j++], op: "add" });
+  return out;
+}
+
+function closeDiff() {
+  state.diffTc = null; $("diff-area").innerHTML = "";
+  document.querySelectorAll(".cell.sel").forEach((el) => el.classList.remove("sel"));
+  nameCase(null);
+}
+
+async function openDiff(tcId, focus = false) {
+  const c = state.comparison;
+  if (!c) return;
+  state.diffTc = tcId;
+  document.querySelectorAll(".cell[data-tc]").forEach((el) => {
+    el.classList.toggle("sel", el.dataset.tc === tcId); el.tabIndex = el.dataset.tc === tcId ? 0 : -1;
+  });
+  nameCase(document.querySelector(".cell.sel"));
+  let d;
+  try {
+    d = await api(`/api/diff?baseline=${encodeURIComponent(c.baseline_run)}&candidate=${encodeURIComponent(c.candidate_run)}&test_case_id=${encodeURIComponent(tcId)}`);
+  } catch (e) { return toast(e.message); }
+  if (state.diffTc !== tcId) return;  // user clicked another case meanwhile
+  const row = c.rows.find((r) => r.test_case_id === tcId) || { change: "" };
+  const words = wordDiff(d.baseline && d.baseline.output, d.candidate && d.candidate.output);
+  const sideHtml = (doc, keep, tagOp) => {
+    if (!doc) return `<span class="detail gray">no result in this run</span>`;
+    if (doc.status !== "ok") return `<span class="detail gray">${esc(doc.status)}: ${esc(doc.error)}</span>`;
+    return `<pre class="out">${words.filter((w) => w.op === "same" || w.op === keep)
+      .map((w) => w.op === "same" ? esc(w.t) : `<${tagOp} class="w">${esc(w.t)}</${tagOp}>`).join(" ")}</pre>`;
+  };
+  const status = (doc) => !doc ? "" : doc.status !== "ok" ? `<span class="tag ${doc.status}">${doc.status.toUpperCase()}</span>`
+    : doc.passed ? `<span class="tag pass">PASS</span>` : `<span class="tag fail">FAIL</span>`;
+  const mark = (p) => p === null ? `<span class="detail gray">—</span>` : p
+    ? `<span class="ok-c">${icon("check")}<span class="sr-only">passed</span></span>` : `<span class="bad-c">${icon("x")}<span class="sr-only">failed</span></span>`;
+  const changed = d.checks.filter((k) => k.changed).length;
+  const fmtVal = (v) => v == null ? "" : typeof v === "object" ? JSON.stringify(v) : String(v);
+  $("diff-area").innerHTML = `
+    <div class="diff">
+      <div class="diff-head"><h3 id="diff-title" tabindex="-1"><span class="mono">${esc(d.test_case._id)}</span> · ${esc(d.test_case.name)}</h3>
+        <span class="tag ${esc(row.change)}">${esc(row.change.replace("_", " "))}</span>
+        <span class="hint" style="margin:0">${esc(d.test_case.risk || "")}</span>
+        <button class="btn small close" id="diff-close">Close <span class="hint" style="margin:0">Esc</span></button></div>
+      <div class="hint" style="margin:0 0 4px">Customer input</div><pre class="out">${esc(d.test_case.input)}</pre>
+      <div class="diff-cols">
+        <div class="diff-col"><div class="lbl">Baseline · ${esc(c.baseline_version)} ${status(d.baseline)}</div>${sideHtml(d.baseline, "del", "del")}</div>
+        <div class="diff-col"><div class="lbl">Candidate · ${esc(c.candidate_version)} ${status(d.candidate)}</div>${sideHtml(d.candidate, "add", "ins")}</div>
+      </div>
+      <div class="table-wrap"><table class="chk-table"><thead><tr><th>Check</th><th>${esc(c.baseline_version)}</th><th>${esc(c.candidate_version)}</th></tr></thead><tbody>
+      ${d.checks.map((k) => `<tr class="${k.changed ? "changed" : ""}"><td><code>${esc(k.type)}</code> <span class="hint">${esc(fmtVal(k.value))}</span></td>
+        <td>${mark(k.baseline)} ${esc(k.baseline_detail || "")}</td><td>${mark(k.candidate)} ${esc(k.candidate_detail || "")}</td></tr>`).join("")}
+      </tbody></table></div>
+      <p class="hint">${changed ? `${changed} check(s) changed outcome (marked "changed").` : "No check changed outcome."}
+        Struck-through red words were removed in the candidate; underlined green words were added.</p>
+    </div>`;
+  $("diff-close").onclick = () => { const tc = state.diffTc; closeDiff(); const cell = document.querySelector(`.cell[data-tc="${CSS.escape(tc)}"]`); if (cell) cell.focus(); };
+  if (focus) $("diff-title").focus();
+}
+
+/* ---------- version history chart ---------- */
+
+async function loadHistory() {
+  try { state.history = await api("/api/history?limit=20"); } catch (_) { return; }
+  renderHistory(); renderRuns();
+}
+
+function renderHistory() {
+  const h = state.history, box = $("hist-chart");
+  $("hist-ref").textContent = h && h.reference_run ? h.reference_run : "—";
+  const runs = h ? h.runs.filter((r) => r.readiness) : [];
+  if (!runs.length) { box.innerHTML = `<div class="empty-state">Run a version to start the history</div>`; $("hist-table").innerHTML = ""; return; }
+
+  const W = Math.max(280, box.clientWidth || 600), H = 220, L = 34, R = 84, T = 12, B = 38;
+  const iw = W - L - R, ih = H - T - B, pad = 22;  // keep end points off the axis
+  const xs = (i) => L + pad + (runs.length === 1 ? (iw - 2 * pad) / 2 : (i * (iw - 2 * pad)) / (runs.length - 1));
+  const ys = (v) => T + ih - (v / 100) * ih;
+  const series = [
+    { key: "score", color: "var(--series-score)", val: (r) => r.readiness.score, label: (v) => `Score ${v}` },
+    { key: "pass", color: "var(--series-pass)", val: (r) => Math.round((r.passed / r.total) * 100), label: (v) => `Pass ${v}%` },
+  ];
+  const grid = [0, 25, 50, 75, 100].map((g) => `<line x1="${L}" x2="${L + iw}" y1="${ys(g)}" y2="${ys(g)}" stroke="var(--border)" stroke-width="1"/>
+    <text x="${L - 8}" y="${ys(g) + 4}" text-anchor="end">${g}</text>`).join("");
+  const step = runs.length > 1 ? (iw - 2 * pad) / (runs.length - 1) : iw;
+  const xl = runs.map((r, i) => `<text class="v" x="${xs(i)}" y="${H - B + 16}" text-anchor="middle">${esc(r.version)}</text>` +
+    (step >= 52 ? `<text x="${xs(i)}" y="${H - B + 30}" text-anchor="middle">${esc(fmtTime(r.started).slice(0, 5))}</text>` : "")).join("");
+  const lines = series.map((s) => {
+    const pts = runs.map((r, i) => `${xs(i)},${ys(s.val(r))}`).join(" ");
+    const dots = runs.map((r, i) => `<circle cx="${xs(i)}" cy="${ys(s.val(r))}" r="4.5" fill="${s.color}" stroke="var(--bg)" stroke-width="2"/>`).join("");
+    return (runs.length > 1 ? `<polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>` : "") + dots;
+  }).join("");
+  // direct labels at the last point; nudge apart if they collide
+  const last = runs.length - 1;
+  let ly = series.map((s) => ys(s.val(runs[last])));
+  if (Math.abs(ly[0] - ly[1]) < 14) { const mid = (ly[0] + ly[1]) / 2, up = ly[0] <= ly[1] ? -1 : 1; ly = [mid + up * 7, mid - up * 7]; }
+  const labels = series.map((s, k) => `<text class="lab" x="${xs(last) + 10}" y="${ly[k] + 4}">${s.label(s.val(runs[last]))}</text>`).join("");
+  const bands = runs.map((r, i) => `<rect data-i="${i}" x="${xs(i) - step / 2}" y="${T}" width="${step}" height="${ih}" fill="transparent"/>`).join("");
+  box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" height="${H}" role="img" aria-label="Readiness score and pass rate for ${runs.length} runs. Use Show as table for the values.">
+    ${grid}<line id="hist-cross" x1="0" x2="0" y1="${T}" y2="${T + ih}" stroke="var(--muted)" stroke-dasharray="3 3" visibility="hidden"/>
+    ${lines}${labels}${xl}${bands}</svg><div class="tip" id="hist-tip"></div>`;
+
+  const tip = $("hist-tip"), cross = $("hist-cross");
+  box.querySelectorAll("rect[data-i]").forEach((rect) => {
+    rect.onmouseenter = () => {
+      const r = runs[+rect.dataset.i], sc = r.readiness, x = xs(+rect.dataset.i);
+      cross.setAttribute("x1", x); cross.setAttribute("x2", x); cross.setAttribute("visibility", "visible");
+      tip.innerHTML = `<div><b>${esc(r.version)}</b> · ${esc(fmtTime(r.started))}${r.run_id === h.reference_run ? " · baseline" : ""}</div>
+        <div class="row"><span>Readiness</span><span>${sc.score} <span class="hint">(${Math.round(sc.quality)}+${Math.round(sc.speed)}+${Math.round(sc.cost)})</span></span></div>
+        <div class="row"><span>Passed</span><span>${r.passed}/${r.total}${r.errors ? ` · ${r.errors} timeout` : ""}</span></div>
+        <div class="row"><span>p95</span><span>${r.p95_ms ?? "—"} ms</span></div>
+        <div class="row"><span>Cost</span><span>${fmtCost(r.total_cost)}</span></div>`;
+      tip.style.display = "block";
+      const left = Math.min(Math.max(0, (x / W) * box.clientWidth + 12), box.clientWidth - tip.offsetWidth);
+      tip.style.left = left + "px"; tip.style.top = "4px";
+    };
+    rect.onmouseleave = () => { tip.style.display = "none"; cross.setAttribute("visibility", "hidden"); };
+    rect.onclick = () => selectRun(runs[+rect.dataset.i].run_id);
+  });
+
+  $("hist-table").innerHTML = `<table><thead><tr><th scope="col">Run</th><th scope="col">Version</th><th scope="col" class="num">Readiness</th><th scope="col" class="num">Passed</th>
+    <th scope="col" class="num">p95</th><th scope="col" class="num">Cost</th></tr></thead><tbody>${[...runs].reverse().map((r) =>
+    `<tr><td class="mono">#${runNumber(r.run_id) || "?"} ${esc(r.run_id)}</td><td>${esc(r.version)}</td><td class="num">${r.readiness.score}</td>
+     <td class="num">${r.passed}/${r.total}</td><td class="num">${r.p95_ms ?? "—"} ms</td><td class="num">${fmtCost(r.total_cost)}</td></tr>`).join("")}</tbody></table>`;
+}
+
+function setLive(mode, detail = "") {
+  state.mode = mode;
+  $("live-dot").className = "dot " + (mode === "change_stream" ? "on" : mode === "polling" ? "mid" : "");
+  $("live-label").textContent = mode === "change_stream" ? "Live: change stream" : mode === "polling" ? "Live: polling every 1 s" : "Live updates: connecting";
+  $("live-label").title = detail;
+  $("log-src").textContent = mode === "polling" ? "Polling (change streams unavailable)" : "MongoDB change stream";
+  $("cs-line").innerHTML = mode === "polling"
+    ? "<b>Change streams:</b> not available on this database (they need a replica set, such as Atlas), so this page is polling every second instead."
+    : "<b>Change streams:</b> this page updates as MongoDB writes each result; no polling.";
+}
+
+/* ---------- data flow ---------- */
+
+function upsertRun(run) {
+  const prev = state.runs.get(run._id);
+  state.runs.set(run._id, run);
+  if (!prev && state.myRuns.has(run._id)) selectRun(run._id, false);
+  renderRuns();  // first, so a just-finished run is selectable in the compare dropdowns
+  if (run._id === state.selectedRun) renderResults();
+  const finished = prev && prev.status === "running" && run.status !== "running";
+  if (finished) {
+    const s = run.summary || {};
+    log(`run #${runNumber(run._id)} ${esc(run.prompt_version)} ${esc((STATUS_LABEL[run.status] || run.status).toLowerCase())}: ${s.passed}/${s.total} passed${s.errors ? `, ${s.errors} unverified` : ""}`,
+      { completed: "neutral", completed_with_errors: "warn", failed: "bad" }[run.status] || "neutral");
+    if (state.myRuns.has(run._id)) onMyRunFinished(run);
+    loadHistory();
+  }
+}
+
+function addResult(doc, fresh = true) {
+  if (!state.results.has(doc.run_id)) state.results.set(doc.run_id, new Map());
+  const m = state.results.get(doc.run_id);
+  if (m.has(doc.test_case_id)) return false;  // de-duplicate (REST + stream overlap)
+  doc._fresh = fresh;
+  m.set(doc.test_case_id, doc);
+  return true;
+}
+
+async function selectRun(runId, scroll = true) {
+  state.selectedRun = runId; state.expanded.clear();
+  renderRuns(); renderResults();
+  try {
+    const d = await api(`/api/runs/${encodeURIComponent(runId)}`);
+    state.runs.set(d.run._id, d.run);
+    d.results.forEach((r) => addResult(r, false));
+    renderRuns(); renderResults();
+  } catch (e) { toast(e.message); }
+}
+
+async function loadAll() {
+  const [runs, latest] = await Promise.all([api("/api/runs?limit=30"), api("/api/comparisons/latest")]);
+  runs.forEach((r) => state.runs.set(r._id, r));
+  renderRuns();
+  if (latest && !state.comparison) { state.comparison = latest; renderRuns(); renderVerdict(latest); }
+  // Results open on the verdict's candidate, so the page tells one story on load.
+  const first = latest && state.runs.has(latest.candidate_run) ? latest.candidate_run : runs[0] && runs[0]._id;
+  if (!state.selectedRun && first) await selectRun(first);
+  await loadHistory();
+}
+
+async function onMyRunFinished(run) {
+  if (!$("auto-compare").checked || run.status === "failed") { setPending(""); return; }
+  const base = $("baseline").value;
+  if (!base || base === run._id) { setPending(""); return; }
+  $("candidate").value = run._id;
+  await doCompare();
+}
+
+async function doCompare() {
+  const baseline = $("baseline").value, candidate = $("candidate").value;
+  if (!baseline || !candidate) return;
+  if (baseline === candidate) return toast("Baseline and candidate are the same run. Pick two different runs.");
+  $("compare-btn").disabled = true;
+  try {
+    const c = await api("/api/compare", { method: "POST", body: JSON.stringify({ baseline, candidate }) });
+    applyComparison(c);
+  } catch (e) { setPending(""); toast(`Could not compare: ${e.message}`); }
+  finally { $("compare-btn").disabled = false; }
+}
+
+const VERDICT_LOG = { SAFE: "ok", RISKY: "warn", NOT_SAFE: "bad", INCONCLUSIVE: "info" };
+
+function applyComparison(c, { logIt = true } = {}) {
+  // One place where a new verdict lands, so verdict, selectors and results always agree.
+  state.comparison = c; setPending("");
+  ["baseline", "candidate"].forEach((id) => delete $(id).dataset.touched);
+  renderRuns(); renderVerdict(c, true);
+  const busy = [...state.myRuns].some((id) => (state.runs.get(id) || {}).status === "running");
+  if (!busy && state.runs.has(c.candidate_run) && state.selectedRun !== c.candidate_run) selectRun(c.candidate_run, false);
+  if (logIt) log(`verdict ${esc(c.baseline_version)} → ${esc(c.candidate_version)}: <b>${VERDICT[c.verdict].title}</b>`, VERDICT_LOG[c.verdict]);
+}
+
+function setPending(text) {
+  const note = $("pending-note");
+  note.innerHTML = text ? `${icon("dash")}<span>${text}</span>` : "";
+  note.classList.toggle("on", !!text);
+  $("verdict-area").classList.toggle("stale", !!text && !!state.comparison);
+}
+
+async function startRun(versionOverride, timeoutsOverride) {
+  const version = versionOverride || $("version").value;
+  const simulate_timeouts = timeoutsOverride || [...$("timeouts").querySelectorAll("input:checked")].map((i) => i.value);
+  $("run-btn").disabled = true;
+  try {
+    const r = await api("/api/runs", { method: "POST", body: JSON.stringify({ version, simulate_timeouts }) });
+    state.myRuns.add(r.run_id);
+    log(`started run ${esc(r.run_id)}${simulate_timeouts.length ? " (timeouts: " + simulate_timeouts.join(",") + ")" : ""}`, "ev");
+    state.runs.set(r.run_id, { _id: r.run_id, prompt_version: version, status: "running", started_at: new Date().toISOString() });
+    await selectRun(r.run_id);
+    $("timeouts").querySelectorAll("input:checked").forEach((i) => { i.checked = false; i.parentElement.classList.remove("on"); });
+    updateTimeoutSummary();
+    const base = state.runs.get($("baseline").value);
+    if ($("auto-compare").checked && base) {
+      setPending(`Running ${esc(version)}. The verdict will update when it finishes (compared with baseline #${runNumber(base._id)} ${esc(base.prompt_version)}).`);
+    }
+  } catch (e) { toast(e.message); }
+  finally { setTimeout(() => ($("run-btn").disabled = false), 800); }
+}
+
+function connectStream() {
+  const es = new EventSource("/api/stream");
+  es.addEventListener("mode", (e) => {
+    const d = JSON.parse(e.data);
+    setLive(d.mode, d.reason || "");
+    log(d.mode === "change_stream" ? "subscribed to the MongoDB change stream" : "change streams unavailable on this database; polling every second", "ev");
+    if (d.mode === "polling") { es.close(); startPolling(); }
+  });
+  es.addEventListener("result", (e) => {
+    const doc = JSON.parse(e.data);
+    const fresh = addResult(doc, true);
+    if (!fresh) return;
+    const mark = doc.status !== "ok" ? `<span class="bad">${doc.status}</span>` : doc.passed ? `<span class="ok">pass</span>` : `<span class="bad">fail</span>`;
+    log(`<span class="ev">insert</span> eval_results ${esc(doc.test_case_id)} ${mark} <span class="t">${esc(doc._id)}</span>`);
+    if (doc.run_id === state.selectedRun) renderResults();
+  });
+  es.addEventListener("run", (e) => upsertRun(JSON.parse(e.data)));
+  es.addEventListener("comparison", (e) => {
+    const c = JSON.parse(e.data);
+    if (!state.comparison || state.comparison._id !== c._id || state.comparison.created_at !== c.created_at) {
+      applyComparison(c, { logIt: !state.comparison || state.comparison._id !== c._id });
+    }
+  });
+  es.onerror = () => { if (state.mode !== "polling") setLive("connecting"); };
+}
+
+function startPolling() {
+  if (state.pollTimer) return;
+  state.pollTimer = setInterval(async () => {
+    try {
+      const runs = await api("/api/runs?limit=30");
+      runs.forEach(upsertRun);
+      const sel = state.runs.get(state.selectedRun);
+      if (sel) {
+        const d = await api(`/api/runs/${encodeURIComponent(sel._id)}`);
+        let changed = false;
+        d.results.forEach((r) => { changed = addResult(r, true) || changed; });
+        if (changed) renderResults();
+      }
+    } catch (_) { /* transient */ }
+  }, 1000);
+}
+
+async function demo(path, describe) {
+  try {
+    const r = await api(path, { method: "POST" });
+    log(describe(r), "ev");
+    return r;
+  } catch (e) { toast(e.message); }
+}
+
+async function init() {
+  try {
+    const h = await api("/api/health");
+    $("db-dot").className = "dot " + (h.ok ? "on" : "off");
+    $("db-label").textContent = h.ok ? `MongoDB ${h.mongodb}` : "MongoDB unavailable";
+    $("db-label").title = h.error || "";
+    if (h.project_id) $("project").textContent = h.project_id;
+    if (!h.ok) { toast("Can't reach MongoDB, so no runs can load. Check MONGODB_URI and Atlas network access. Details: " + h.error); return; }
+    [state.versions, state.testCases] = await Promise.all([api("/api/versions"), api("/api/test-cases")]);
+    renderVersions();
+    await loadAll();      // 1) current state over REST
+    connectStream();      // 2) then live updates; addResult() de-duplicates by test case
+  } catch (e) { toast(e.message); }
+}
+
+$("run-btn").onclick = () => startRun();
+$("hist-table-btn").onclick = () => {
+  const t = $("hist-table"), show = t.style.display === "none";
+  t.style.display = show ? "block" : "none"; $("hist-table-btn").textContent = show ? "Hide table" : "Show as table";
+  $("hist-table-btn").setAttribute("aria-expanded", String(show));
+};
+let resizeTimer;
+window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(renderHistory, 150); });
+$("compare-btn").onclick = doCompare;
+$("refresh-btn").onclick = () => loadAll().catch((e) => toast(e.message));
+["baseline", "candidate"].forEach((id) => $(id).addEventListener("change", () => ($(id).dataset.touched = "1")));
+$("dup-btn").onclick = () => demo("/api/demo/duplicate", (r) =>
+  `re-sent ${esc(r.result_id)} (${esc(r.test_case_id)}) → <b>${esc(r.outcome)}</b>, results in run: ${r.count_before} → ${r.count_after}`);
+$("inc-btn").onclick = () => demo("/api/demo/incomplete", (r) =>
+  `result without ${esc(r.missing_field)} → <b>${esc(r.outcome)}</b>${r.outcome === "rejected" ? " by $jsonSchema validator (code 121)" : ""}`);
+$("explain-btn").onclick = async () => {
+  if (!state.selectedRun) return toast("Select a run first");
+  try {
+    const p = await api(`/api/explain/${encodeURIComponent(state.selectedRun)}`);
+    $("explain-out").textContent = !p.available ? p.reason :
+      `find({run_id: "${p.filter.run_id}"})\nplan: ${p.stages.map((x) => x.stage).join(" ← ")}\n` +
+      `index: ${p.index}\nexamined ${p.keys_examined} keys, ${p.docs_examined} docs → ${p.n_returned} returned` +
+      `\n${p.uses_index ? "IXSCAN: the index was used" : "COLLSCAN: no index used"}`;
+  } catch (e) { toast(e.message); }
+};
+$("reset-btn").onclick = async () => {
+  if (!confirm("Delete all runs, results and verdicts? Prompts and test cases are kept.")) return;
+  const r = await demo("/api/demo/reset", () => "run history cleared");
+  if (r) { state.runs.clear(); state.results.clear(); state.selectedRun = null; state.comparison = null;
+    ["baseline", "candidate"].forEach((id) => delete $(id).dataset.touched);
+    state.history = null; closeDiff(); setPending("");
+    renderRuns(); renderResults(); renderVerdict(null); renderHistory(); }
+};
+document.addEventListener("keydown", (e) => {
+  const inVerdict = document.activeElement === document.body || $("verdict-card").contains(document.activeElement);
+  if (e.key === "Escape" && state.diffTc && inVerdict) { e.preventDefault(); $("diff-close").click(); }
+});
+init();
+</script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-# Prompt Regression Guard: Specification
+# PARAKH: Specification
 
 This is the source of truth for **what** to build. If code and this file disagree, fix
 the code or update this file in the same commit, with a reason.
@@ -7,7 +7,7 @@ the code or update this file in the same commit, with a reason.
 
 > **"Is this prompt or model change safe to ship?"**
 
-Prompt Regression Guard is unit tests plus CI for LLM prompts. A developer defines a
+PARAKH (formerly "Prompt Regression Guard") is unit tests plus CI for LLM prompts. A developer defines a
 test set (inputs plus deterministic checks). Each prompt version is run against the test
 set, every result is stored in MongoDB, and two runs are compared to give a release
 verdict: **SAFE, RISKY, NOT_SAFE, or INCONCLUSIVE**.
@@ -53,11 +53,14 @@ why it failed; it is what makes this a debugging tool rather than a scoreboard.
 | `not_contains_keyword` | `"calm down"` | case-insensitive substring NOT found |
 | `max_words` | `60` | word count of the output (the `reply` field if JSON, else raw text) is at most N |
 | `regex_match` | `"ORD-\\d{5}"` | `re.search` matches |
+| `not_regex_match` | card-number pattern | `re.search` does NOT match (PII must not be echoed) |
+| `json_field_in` | `{"field":"category","in":["refund","shipping"]}` | field is one of the allowed values |
 
-An unknown check type returns `passed: false` with detail `unknown check type`.
+`is_valid_json` requires a JSON *object* (a list does not count). A test case with no
+checks never passes. An unknown check type returns `passed: false` with detail `unknown check type`.
 JSON checks on non-JSON output return `passed: false` with detail `output is not JSON`.
 
-## 5. Test set (12 cases, `data/test_cases.json`)
+## 5. Test set (30 cases, `data/test_cases.json`)
 
 | ID | Scenario | Risk it covers |
 |---|---|---|
@@ -73,6 +76,28 @@ JSON checks on non-JSON output return `passed: false` with detail `output is not
 | tc10 | long rambling message | length limit (`max_words`) |
 | tc11 | prompt-injection attempt | security (must not leak system prompt) |
 | tc12 | non-English message | format still valid |
+| tc13 | order status with order number | required content (order ID + tracking) |
+| tc14 | wrong item received | apology + return label |
+| tc15 | change email address | classification |
+| tc16 | delete my data request | privacy / compliance (30 days) |
+| tc17 | customer shares card number | **PII: card number must never be echoed** |
+| tc18 | discount code not working | classification |
+| tc19 | warranty claim | required content |
+| tc20 | international shipping question | classification |
+| tc21 | legal threat | tone under pressure (category may be other/billing/refund) |
+| tc22 | asks for a human agent | escalation |
+| tc23 | Hinglish message | format still valid |
+| tc24 | emoji-only message | graceful fallback |
+| tc25 | simple greeting | fallback + length |
+| tc26 | HTML/script injection in input | no markup echoed |
+| tc27 | role-play jailbreak | no secrets |
+| tc28 | two issues in one message | multi-intent (refund or shipping) |
+| tc29 | one-word message | asks for missing info |
+| tc30 | price match with competitor | banned content (Amazon) |
+
+Seeding (`guard seed`, `guard/seed.py`) validates both data files first (required fields,
+known check types, no duplicate IDs) and only then upserts by `_id`; `created_at` is set
+once with `$setOnInsert`.
 
 ## 6. Mock model (`guard/mock_model.py`)
 
@@ -93,14 +118,14 @@ call_model(prompt_version: dict, test_case: dict, simulate_timeout=False) -> dic
 | Version | Story | Behaviour | Model / base latency |
 |---|---|---|---|
 | v1 | Baseline: long prompt, big model | All pass except **tc10** (reply too long, ~90 words) | `mock-large`, ~600 ms |
-| v2 | "Shorter prompt, cheaper model" | **tc02** plain text (not JSON), **tc07** no "sorry", **tc11** leaks system prompt; **tc10** now short (fixed) | `mock-mini`, ~430 ms, ~7x cheaper |
-| v3 | "Few-shot examples" | All 12 pass; much longer prompt so more tokens | `mock-large`, ~820 ms |
+| v2 | "Shorter prompt, cheaper model" | **tc02** plain text (not JSON), **tc07** no "sorry", **tc11** leaks system prompt, **tc17** echoes the card number, **tc23** plain text; **tc10** now short (fixed) | `mock-mini`, ~430 ms, ~7x cheaper |
+| v3 | "Few-shot examples" | All 30 pass; much longer prompt so more tokens | `mock-large`, ~820 ms |
 
 Expected comparisons (these are acceptance tests):
 
 | Comparison | Expected verdict | Why |
 |---|---|---|
-| v1 → v2 | **NOT_SAFE** | 3 regressed (tc02, tc07, tc11), 1 fixed (tc10); cost ≈ -85%, latency down |
+| v1 → v2 | **NOT_SAFE** | 5 regressed (tc02, tc07, tc11, tc17, tc23), 1 fixed (tc10); cost -92%, p95 -29% |
 | v1 → v3 | **RISKY** | 0 regressed, 1 fixed; p95 latency > +25% and cost > +30% |
 | v1 → v3 with timeouts on tc03,tc05,tc09 | **INCONCLUSIVE** | 0 regressed, 3 unverified |
 
@@ -262,7 +287,34 @@ Change streams need a replica set: Atlas (even free M0) has one; a plain local
 | Failed job | `guard run v3 --simulate-timeouts tc03,tc05,tc09` | 3 timeout results, verdict INCONCLUSIVE | honest missing-data handling |
 | Invalid config | `guard run v99` | "prompt version not found", exit 3 | input validation |
 
+## 13b. Insights (added 31 Oct)
+
+- **Case diff** (`compare.case_diff`, `GET /api/diff?baseline=&candidate=&test_case_id=`):
+  both runs' outputs for one test case plus every check with its baseline/candidate
+  outcome and a `changed` flag. The dashboard shows a word-level diff (red removed,
+  green added) and opens the first regressed case automatically after a compare.
+- **Version history** (`compare.run_history`, `GET /api/history`, `guard history`):
+  one aggregation over `eval_results` (`$group` per run with `$percentile`, then a
+  `$lookup` into `eval_runs` for status), oldest → newest, drawn as a line chart.
+- **Readiness score** (`compare.readiness_score`): 0-100 =
+  70 × pass rate + 15 × min(1, ref p95 / p95) + 15 × min(1, ref cost / cost).
+  Reference = newest finished v1 run, else the oldest run shown. Timeouts count as not
+  passed. Demo values: v1 98, v2 88, v3 90, v3 with 3 timeouts 84. The score is a
+  summary for humans; the verdict rules (section 10) remain the release gate.
+
+## 13c. GitHub integration (added 31 Oct)
+
+- `guard/gitmeta.py` `detect()` → `{sha, short, branch, pr, repo, source, commit_url,
+  pr_url}` from `GUARD_*`, `GITHUB_*`, `RENDER_GIT_*` env vars or local git; `None` if
+  unknown. Stored once per run as `eval_runs.git` (validator: object with `sha`; sparse
+  index `git_sha`). Comparisons copy `baseline_git` / `candidate_git`.
+- `guard/report.py` `markdown_report(db, comparison, dashboard_url)` → PR comment text,
+  starting with the hidden marker `<!-- prompt-regression-guard -->` so the bot edits
+  its own comment. `guard compare A B --markdown FILE` writes it before exiting.
+- `data/release.json` `{baseline, candidate}` selects what the PR bot compares.
+- Details and demo steps: `docs/GITHUB.md`.
+
 ## 14. Out of scope unless everything else is done
 
 LLM-as-judge, real LLM `--live` mode, `--repeats N`, auth, multiple projects in the UI,
-n8n integration. Do not start these before docs/PROGRESS.md steps 1-7 are done.
+n8n integration, GitHub App / webhooks. Do not start these before docs/PROGRESS.md steps 1-7 are done.

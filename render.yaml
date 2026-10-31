@@ -1,0 +1,20 @@
+# Render Blueprint: New > Blueprint > pick this repo. Then set MONGODB_URI in the
+# dashboard (it is marked sync: false so the secret never lives in Git).
+services:
+  - type: web
+    name: prompt-regression-guard
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    # Exactly one worker: run bookkeeping (_active_runs) lives in process memory.
+    startCommand: uvicorn guard.api:app --host 0.0.0.0 --port $PORT --workers 1
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: MONGODB_URI
+        sync: false
+      - key: GUARD_DB_NAME
+        value: prompt_guard
+      - key: GUARD_PROJECT_ID
+        value: supportbot
