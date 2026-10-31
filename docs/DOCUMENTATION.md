@@ -20,6 +20,7 @@ CLI reference are in the [README](../README.md); this document explains the proj
 ## 1. Team details
 
 **Team name:** Veni Vidi Vici
+
 **Institute:** Sardar Vallabhbhai National Institute of Technology (SVNIT), Surat, B.Tech Artificial Intelligence
 
 | Member | Roll number |
