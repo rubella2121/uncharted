@@ -13,7 +13,7 @@ import random
 
 
 def _j(category: str, reply: str) -> str:
-    return json.dumps({"category": category, "reply": reply})
+    return json.dumps({"category": category, "reply": reply}, ensure_ascii=False)
 
 
 # Correct answers. Each one passes every check of its test case (tested).

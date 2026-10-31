@@ -10,7 +10,7 @@ Update this file in the same commit as the work. Mark a step done only when its
 
 | # | Step | Files | Done when | Status |
 |---|---|---|---|---|
-| 1 | Foundation: config, stable IDs, collections, validators, indexes, `setup`/`doctor` CLI, handoff docs | `guard/config.py`, `guard/ids.py`, `guard/db.py`, `guard/cli.py`, `tests/test_ids.py`, `tests/test_db.py`, docs | `pytest` green; `guard doctor` passes against Atlas | ✅ code done (Atlas check pending: run `python -m guard doctor`) |
+| 1 | Foundation: config, stable IDs, collections, validators, indexes, `setup`/`doctor` CLI, handoff docs | `guard/config.py`, `guard/ids.py`, `guard/db.py`, `guard/cli.py`, `tests/test_ids.py`, `tests/test_db.py`, docs | `pytest` green; `guard doctor` passes against Atlas | ✅ done (verified on Atlas, MongoDB 8.0) |
 | 2 | Checks + demo data | `guard/checks.py`, `data/prompts.json`, `data/test_cases.json`, `tests/test_checks.py`, `guard seed` | each check type has a pass and a fail test; `guard seed` loads 3 versions + 12 cases (idempotent upsert) | ✅ done |
 | 3 | Mock model + runner | `guard/mock_model.py`, `guard/runner.py`, `guard run` | `guard run v1` stores 12 results (11 pass); re-running a stored result is ignored; `--simulate-timeouts` works; `guard run v99` exits 3 | ✅ done |
 | 4 | Comparison + verdict | `guard/compare.py`, `guard compare`, `tests/test_compare.py` | v1→v2 NOT_SAFE (3 regressed, 1 fixed); v1→v3 RISKY; v1→v3+timeouts INCONCLUSIVE; exit codes correct | ✅ done |
@@ -59,3 +59,4 @@ runs on re-setup).
 - 31 Oct 01:45 IST: Steps 3+4 done: mock model, runner (resume, timeouts, duplicates), comparison pipeline, stats with $percentile + Python fallback, verdict rules, CLI `run/compare/history/reset/demo-duplicate/demo-incomplete`, failure-case helpers in `guard/demo.py`. 107 tests green.
 - 31 Oct 02:15 IST: Step 5 done: `guard/api.py` (REST + SSE via change streams with polling fallback, background runs, auto schema+seed on startup). 116 tests green.
 - 31 Oct 03:00 IST: Step 6 dashboard (live table, verdict banner, auto-compare, failure buttons, query plan), `guard explain` + `/api/explain`, deploy config (Render/Docker/Procfile), GitHub Actions (tests + prompt-guard gate example), README, DEPLOY, DEMO_SCRIPT, PPT_OUTLINE. 118 tests green. Dashboard verified in Chromium (desktop + 390px mobile).
+- 31 Oct: Atlas verified by the team: dashboard shows MongoDB 8.0 + live change stream, RISKY verdict and IXSCAN plan as expected. Fixed tc12 Spanish output being shown as \u escapes (ensure_ascii=False).
