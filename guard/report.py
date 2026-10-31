@@ -61,7 +61,7 @@ def markdown_report(db: Database, comparison: dict, dashboard_url: str | None = 
     cand_label = _git_label(c.get("candidate_git"))
     lines = [
         MARKER,
-        f"## 🛡️ Prompt Regression Guard: {HEADLINE[c['verdict']]}",
+        f"## 🛡️ PARAKH: {HEADLINE[c['verdict']]}",
         "",
         f"**`{c['baseline_version']}`**{' (' + base_label + ')' if base_label else ''} → "
         f"**`{c['candidate_version']}`**{' (' + cand_label + ')' if cand_label else ''}. "

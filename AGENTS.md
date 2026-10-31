@@ -6,7 +6,7 @@ whole file before changing anything, then read `docs/SPEC.md` (what to build) an
 
 ## Project in one line
 
-Prompt Regression Guard answers **"Is this prompt or model change safe to ship?"** by
+PARAKH (Python package and CLI: `guard`) answers **"Is this prompt or model change safe to ship?"** by
 running a test set against prompt versions, storing every result in MongoDB, comparing
 runs with aggregation pipelines, and giving a verdict: SAFE / RISKY / NOT_SAFE /
 INCONCLUSIVE. Hackathon: UNCHARTED 2026, Track 3 (MongoDB). Deadline 31 Oct 2026,

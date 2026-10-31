@@ -49,7 +49,7 @@ async def lifespan(_app: FastAPI):
     yield
 
 
-app = FastAPI(title="Prompt Regression Guard", lifespan=lifespan)
+app = FastAPI(title="PARAKH", lifespan=lifespan)
 
 
 def _json(data):
@@ -294,5 +294,5 @@ def index():
     page = config.WEB_DIR / "index.html"
     if page.exists():
         return FileResponse(page)
-    return HTMLResponse("<h1>Prompt Regression Guard</h1><p>Dashboard not built yet. "
+    return HTMLResponse("<h1>PARAKH</h1><p>Dashboard not built yet. "
                         "API docs: <a href='/docs'>/docs</a></p>")

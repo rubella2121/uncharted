@@ -12,7 +12,7 @@ from guard import gitmeta, report, runner
 from guard.ids import utcnow
 from guard.seed import seed as seed_data
 
-app = typer.Typer(add_completion=False, help="Prompt Regression Guard")
+app = typer.Typer(add_completion=False, help="PARAKH: is this prompt or model change safe to ship?")
 
 
 @app.command()

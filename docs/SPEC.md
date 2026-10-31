@@ -1,4 +1,4 @@
-# Prompt Regression Guard: Specification
+# PARAKH: Specification
 
 This is the source of truth for **what** to build. If code and this file disagree, fix
 the code or update this file in the same commit, with a reason.
@@ -7,7 +7,7 @@ the code or update this file in the same commit, with a reason.
 
 > **"Is this prompt or model change safe to ship?"**
 
-Prompt Regression Guard is unit tests plus CI for LLM prompts. A developer defines a
+PARAKH (formerly "Prompt Regression Guard") is unit tests plus CI for LLM prompts. A developer defines a
 test set (inputs plus deterministic checks). Each prompt version is run against the test
 set, every result is stored in MongoDB, and two runs are compared to give a release
 verdict: **SAFE, RISKY, NOT_SAFE, or INCONCLUSIVE**.

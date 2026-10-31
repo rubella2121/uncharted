@@ -1,4 +1,6 @@
-# Prompt Regression Guard
+# PARAKH
+
+*PARAKH (परख) is Hindi for "to test, to assay": checking something is genuine before you trust it.*
 
 > **Is this prompt or model change safe to ship?**
 
@@ -25,7 +27,7 @@ hand-tested messages look fine, so they ship. Two days later customers report th
 password-reset replies are plain text (the JSON parser crashes), billing complaints no
 longer apologise, and a prompt-injection message leaks the system prompt.
 
-Prompt Regression Guard catches all of it, plus two problems nobody tested by hand
+PARAKH catches all of it, plus two problems nobody tested by hand
 (the bot now repeats a customer's full card number back to them, and Hinglish
 messages get plain text instead of JSON):
 
