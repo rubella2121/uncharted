@@ -227,3 +227,123 @@ def compare_runs(db: Database, baseline: str, candidate: str,
     }
     db[config.COMPARISONS].replace_one({"_id": doc["_id"]}, doc, upsert=True)
     return doc
+
+
+# ---------------------------------------------------------------------------
+# Readiness score, version history, and per-case diff (dashboard insights)
+# ---------------------------------------------------------------------------
+
+SCORE_WEIGHTS = {"quality": 70, "speed": 15, "cost": 15}
+
+
+def readiness_score(stats: dict, reference: dict) -> dict:
+    """0-100 "ready to ship" score for one run, relative to a reference run.
+
+    quality: share of all test cases that passed (timeouts count as not passed),
+    speed/cost: full marks when p95 / total cost are no worse than the reference,
+    shrinking in proportion when they grow (half the points at 2x the reference).
+    Quality dominates on purpose: a cheap prompt that breaks cases must score low.
+    """
+    def ratio(ref, val):
+        if not ref or not val:
+            return 1.0
+        return min(1.0, ref / val)
+
+    quality = stats["passed"] / stats["total"] if stats["total"] else 0.0
+    speed = ratio(reference.get("p95_ms"), stats.get("p95_ms"))
+    cost = ratio(reference.get("total_cost"), stats.get("total_cost"))
+    parts = {
+        "quality": round(SCORE_WEIGHTS["quality"] * quality, 1),
+        "speed": round(SCORE_WEIGHTS["speed"] * speed, 1),
+        "cost": round(SCORE_WEIGHTS["cost"] * cost, 1),
+    }
+    return {"score": round(sum(parts.values())), **parts}
+
+
+def history_pipeline(project_id: str, use_percentile: bool, limit: int) -> list[dict]:
+    """Per-run quality, cost and latency for the whole project, newest `limit` runs."""
+    ok = {"$eq": ["$status", "ok"]}
+    group = {
+        "_id": "$run_id",
+        "version": {"$first": "$prompt_version"},
+        "started": {"$min": "$timestamp"},
+        "total": {"$sum": 1},
+        "passed": {"$sum": {"$cond": [{"$eq": ["$passed", True]}, 1, 0]}},
+        "errors": {"$sum": {"$cond": [ok, 0, 1]}},
+        "total_cost": {"$sum": {"$ifNull": ["$cost_usd", 0]}},
+    }
+    if use_percentile:
+        group["p95_ms"] = {"$percentile": {"input": {"$cond": [ok, "$latency_ms", None]},
+                                           "p": [0.95], "method": "approximate"}}
+    else:
+        group["latencies"] = {"$push": {"$cond": [ok, "$latency_ms", None]}}
+    return [
+        {"$match": {"project_id": project_id}},  # project_version_time index
+        {"$group": group},
+        {"$sort": {"started": -1}},
+        {"$limit": limit},
+        # Pull each run's status from eval_runs (a join only on this small page).
+        {"$lookup": {"from": config.EVAL_RUNS, "localField": "_id",
+                     "foreignField": "_id", "as": "run"}},
+        {"$addFields": {"status": {"$arrayElemAt": ["$run.status", 0]}}},
+        {"$project": {"run": 0}},
+    ]
+
+
+def run_history(db: Database, project_id: str = config.PROJECT_ID, limit: int = 20) -> dict:
+    """Runs oldest -> newest with stats and a readiness score. The reference for the
+    score is the newest finished v1 run (the baseline), else the oldest run shown."""
+    use_pct = dbmod.supports_percentile(db)
+    rows = list(db[config.EVAL_RESULTS].aggregate(history_pipeline(project_id, use_pct, limit)))
+    rows.reverse()
+    runs = []
+    for r in rows:
+        if use_pct:
+            p95_ms = (r.get("p95_ms") or [None])[0]
+        else:
+            p95_ms = p95([x for x in r.pop("latencies", []) if x is not None])
+        runs.append({"run_id": r["_id"], "version": r["version"], "started": r["started"],
+                     "status": r.get("status"), "total": r["total"], "passed": r["passed"],
+                     "errors": r["errors"], "total_cost": round(r["total_cost"], 8),
+                     "p95_ms": p95_ms})
+    finished = [r for r in runs if r["status"] in FINISHED]
+    reference = next((r for r in reversed(finished) if r["version"] == "v1"), None) \
+        or (finished[0] if finished else None)
+    for r in runs:
+        r["readiness"] = readiness_score(r, reference) if reference else None
+    return {"reference_run": reference["run_id"] if reference else None, "runs": runs}
+
+
+def case_diff(db: Database, baseline_run: str, candidate_run: str, test_case_id: str) -> dict:
+    """Both runs' results for one test case, side by side, with the checks whose
+    outcome changed. Answers "what exactly broke?" for a regressed case."""
+    results = db[config.EVAL_RESULTS]
+    base = results.find_one({"run_id": baseline_run, "test_case_id": test_case_id})
+    cand = results.find_one({"run_id": candidate_run, "test_case_id": test_case_id})
+    tc = db[config.TEST_CASES].find_one({"_id": test_case_id})
+    if tc is None:
+        raise ValueError(f"test case '{test_case_id}' not found")
+    if base is None and cand is None:
+        raise ValueError(f"no results for {test_case_id} in either run")
+
+    base_checks = (base or {}).get("checks") or []
+    cand_checks = (cand or {}).get("checks") or []
+    checks = []
+    for i, spec in enumerate(tc["checks"]):  # same test case -> same check order
+        b = base_checks[i] if i < len(base_checks) else None
+        c = cand_checks[i] if i < len(cand_checks) else None
+        checks.append({
+            "type": spec["type"], "value": spec.get("value"),
+            "baseline": b["passed"] if b else None, "baseline_detail": b["detail"] if b else None,
+            "candidate": c["passed"] if c else None, "candidate_detail": c["detail"] if c else None,
+            "changed": (b or {}).get("passed") != (c or {}).get("passed"),
+        })
+
+    def side(doc):
+        if doc is None:
+            return None
+        return {k: doc.get(k) for k in ("_id", "run_id", "prompt_version", "status", "passed",
+                                        "output", "error", "latency_ms", "cost_usd")}
+
+    return {"test_case": {k: tc.get(k) for k in ("_id", "name", "risk", "input")},
+            "baseline": side(base), "candidate": side(cand), "checks": checks}

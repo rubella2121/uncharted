@@ -199,13 +199,15 @@ def compare(
 
 @app.command()
 def history(limit: int = typer.Option(10, help="How many runs to show")):
-    """List the most recent runs of the project."""
-    database = dbmod.get_db()
-    for r in database[config.EVAL_RUNS].find({"project_id": config.PROJECT_ID}) \
-            .sort("started_at", -1).limit(limit):
-        s = r.get("summary", {})
-        typer.echo(f"  {r['_id']:28} {r['prompt_version']:4} {r['status']:22} "
-                   f"{s.get('passed', '-')}/{s.get('total', '-')}")
+    """List recent runs with pass rate, p95, cost and readiness score (0-100)."""
+    h = cmp.run_history(dbmod.get_db(), limit=limit)
+    typer.echo(f"  {'run':28} {'ver':4} {'pass':>6} {'p95':>8} {'cost':>10} {'score':>6}")
+    for r in reversed(h["runs"]):
+        score = r["readiness"]["score"] if r["readiness"] else "-"
+        p95_ms = f"{r['p95_ms']} ms" if r["p95_ms"] is not None else "-"
+        ref = "  (reference)" if r["run_id"] == h["reference_run"] else ""
+        typer.echo(f"  {r['run_id']:28} {r['version']:4} {r['passed']:>3}/{r['total']:<2} "
+                   f"{p95_ms:>8} ${r['total_cost']:.6f} {score:>6}{ref}")
 
 
 @app.command()

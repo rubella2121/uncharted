@@ -91,3 +91,15 @@ def test_change_stream_pipeline_filters_collections():
     match = api.change_stream_pipeline()[0]["$match"]
     assert set(match["ns.coll"]["$in"]) == {config.EVAL_RESULTS, config.EVAL_RUNS,
                                             config.COMPARISONS}
+
+
+def test_history_and_diff_endpoints(client):
+    client.post("/api/runs", json={"version": "v1", "wait": True})
+    client.post("/api/runs", json={"version": "v2", "wait": True})
+    h = client.get("/api/history").json()
+    assert len(h["runs"]) == 2 and h["runs"][0]["readiness"]["score"] > h["runs"][1]["readiness"]["score"]
+    base, cand = h["runs"][0]["run_id"], h["runs"][1]["run_id"]
+    d = client.get("/api/diff", params={"baseline": base, "candidate": cand, "test_case_id": "tc02"}).json()
+    assert any(c["changed"] and c["type"] == "is_valid_json" for c in d["checks"])
+    assert client.get("/api/diff", params={"baseline": base, "candidate": cand,
+                                           "test_case_id": "nope"}).status_code == 404

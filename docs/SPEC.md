@@ -267,6 +267,21 @@ Change streams need a replica set: Atlas (even free M0) has one; a plain local
 | Failed job | `guard run v3 --simulate-timeouts tc03,tc05,tc09` | 3 timeout results, verdict INCONCLUSIVE | honest missing-data handling |
 | Invalid config | `guard run v99` | "prompt version not found", exit 3 | input validation |
 
+## 13b. Insights (added 31 Oct)
+
+- **Case diff** (`compare.case_diff`, `GET /api/diff?baseline=&candidate=&test_case_id=`):
+  both runs' outputs for one test case plus every check with its baseline/candidate
+  outcome and a `changed` flag. The dashboard shows a word-level diff (red removed,
+  green added) and opens the first regressed case automatically after a compare.
+- **Version history** (`compare.run_history`, `GET /api/history`, `guard history`):
+  one aggregation over `eval_results` (`$group` per run with `$percentile`, then a
+  `$lookup` into `eval_runs` for status), oldest → newest, drawn as a line chart.
+- **Readiness score** (`compare.readiness_score`): 0-100 =
+  70 × pass rate + 15 × min(1, ref p95 / p95) + 15 × min(1, ref cost / cost).
+  Reference = newest finished v1 run, else the oldest run shown. Timeouts count as not
+  passed. Demo values: v1 94, v2 82, v3 90, v3 with 3 timeouts 76. The score is a
+  summary for humans; the verdict rules (section 10) remain the release gate.
+
 ## 14. Out of scope unless everything else is done
 
 LLM-as-judge, real LLM `--live` mode, `--repeats N`, auth, multiple projects in the UI,

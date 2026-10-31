@@ -45,6 +45,16 @@ $ python -m guard compare v1 v2
 
 Cheaper and faster, and still blocked: that is the trap real teams fall into.
 
+## What the dashboard shows
+
+- **Live results** as MongoDB writes them (change stream), with the reason each check failed.
+- **Release verdict** with pass rate, p95 latency and cost deltas.
+- **Side-by-side diff** of any test case: baseline vs candidate output with removed and
+  added words highlighted, and which checks flipped.
+- **Version history chart** of a 0-100 **readiness score** and pass rate for every run
+  (70% quality, 15% speed, 15% cost, relative to the baseline).
+- **Failure-case buttons** and the **query plan** (IXSCAN) for judges to try.
+
 ## Demo scenarios (SupportBot, a JSON customer-support assistant)
 
 | Comparison | Verdict | Why |
@@ -83,7 +93,7 @@ flowchart LR
 |---|---|
 | Runs and events with stable IDs, timestamps, links to project/version | `eval_results._id = sha256(run_id, test_case_id)`; BSON `timestamp`; `project_id`, `prompt_version`, `run_id` on every result |
 | Indexes for the most frequent questions | unique `{run_id, test_case_id}` (results of a run / already stored?), `{project_id, prompt_version, timestamp}`, `{project_id, started_at}`; `guard explain` shows **IXSCAN** |
-| Aggregation pipelines to compare runs | `$match` → `$group` by test case with 0/1 flags → `$switch` into regressed / fixed / still passing / still failing / unverified; `$percentile` for p95 latency |
+| Aggregation pipelines to compare runs | `$match` → `$group` by test case with 0/1 flags → `$switch` into regressed / fixed / still passing / still failing / unverified; `$percentile` for p95 latency; per-run history with `$group` + `$lookup` into `eval_runs` |
 | Schema validation with flexible payloads | strict `$jsonSchema` envelope (`run_id`, `status`, `passed`, `timestamp`, …); `output` and `checks` deliberately unconstrained |
 | Safe repeated ingestion | duplicate inserts raise `DuplicateKeyError` → logged as "duplicate ignored"; a resumed run skips stored cases; comparisons are upserts |
 | Change streams for live views | `/api/stream` watches inserts and updates and pushes them to the browser (Server-Sent Events) |

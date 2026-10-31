@@ -17,9 +17,9 @@ each at least three times, and reset the run history before recording.
 | 0:00–0:40 | Title slide → dashboard | Problem: no unit tests for prompts. Story: SupportBot must reply in JSON, and Priya edits the prompt to cut cost. |
 | 0:40–1:30 | Test cases (expand a row) | 12 cases, deterministic checks: valid JSON, keywords, banned words, length, prompt injection. No LLM judge, so the result is reproducible. |
 | 1:30–2:15 | **Run v1** (rows stream in live) | "Each row is a MongoDB document, and the page updates from a change stream." Result: 11/12, and tc10 is too long. |
-| 2:15–3:15 | **Run v2**, verdict appears | "Shorter prompt, cheaper model. Cost fell 92%, and the tool still says **NOT SAFE**: password reset is no longer JSON, the apology is gone, and it leaks its system prompt." Expand tc11 to show the leaked output. |
+| 2:15–3:15 | **Run v2**, verdict appears | "Shorter prompt, cheaper model. Cost fell 92%, and the tool still says **NOT SAFE**: password reset is no longer JSON, the apology is gone, and it leaks its system prompt." The diff opens on tc02 automatically: v1 JSON struck out in red, v2 plain text in green. Click tc11 to show the leaked system prompt. |
 | 3:15–3:50 | **Run v3** | Few-shot prompt: all 12 pass, but **RISKY**: p95 +38%, cost +61%. "It is a decision aid, not just pass/fail." |
-| 3:50–4:40 | **Run v3 with timeouts tc03, tc05, tc09** | **INCONCLUSIVE**. "Most tools would report 9 of 9 = 100% and be wrong. Missing data can never prove safety." |
+| 3:50–4:40 | **Run v3 with timeouts tc03, tc05, tc09** | **INCONCLUSIVE**. "Most tools would report 9 of 9 = 100% and be wrong. Missing data can never prove safety." Then scroll to the **version history chart**: readiness 94 → 82 → 90 → 76, the whole story in one picture from one aggregation. |
 | 4:40–5:30 | Failure buttons + MongoDB Atlas (Compass or the Atlas UI) | Re-send a result → duplicate ignored, count unchanged (stable ID + unique index). Result without run_id → rejected by `$jsonSchema`. Show a result document, the validator and the indexes; click **Show query plan** → IXSCAN. |
 | 5:30–6:00 | Terminal: `python -m guard compare v1 v2; echo $?` → 1 | "Exit codes make it a CI merge gate; there is a GitHub Actions workflow in the repo." Closing line. |
 

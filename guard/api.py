@@ -102,6 +102,21 @@ def run_detail(run_id: str):
     return _json({"run": run, "results": list(results)})
 
 
+@app.get("/api/history")
+def history(limit: int = 20):
+    """Per-run pass rate, p95, cost and readiness score, oldest -> newest (for the chart)."""
+    return _json(cmp.run_history(get_db(), limit=min(max(limit, 1), 50)))
+
+
+@app.get("/api/diff")
+def diff(baseline: str, candidate: str, test_case_id: str):
+    """Baseline vs candidate output and checks for one test case."""
+    try:
+        return _json(cmp.case_diff(get_db(), baseline, candidate, test_case_id))
+    except ValueError as e:
+        raise HTTPException(404, str(e))
+
+
 @app.get("/api/explain/{run_id}")
 def explain(run_id: str):
     """Query plan for "all results of run X": shows the index in use and docs examined."""

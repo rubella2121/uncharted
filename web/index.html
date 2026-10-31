@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root {
+  --series-score: #3987e5; --series-pass: #d95926;
   --bg: #0b1210; --panel: #111b18; --panel-2: #16231f; --border: #22332e;
   --text: #e3ece8; --muted: #8aa39a; --accent: #00ed64; --accent-dim: #0b3d24;
   --pass: #2fd47a; --pass-bg: #0f2e1f; --fail: #ff5d5d; --fail-bg: #3a1414;
@@ -160,6 +161,40 @@ pre.out { white-space: pre-wrap; word-break: break-word; margin: 0; font-family:
 details.mongo summary { cursor: pointer; color: var(--muted); font-size: 13px; }
 details.mongo ul { padding-left: 18px; margin: 8px 0 0; font-size: 13px; }
 details.mongo li { margin: 4px 0; }
+/* diff view */
+.cell { cursor: pointer; font: inherit; color: inherit; text-align: left; }
+.cell:hover { border-color: var(--muted); }
+.cell.sel { outline: 2px solid var(--accent); outline-offset: 1px; }
+#diff-area:empty { display: none; }
+.diff { margin-top: 14px; border: 1px solid var(--border); border-radius: 10px; padding: 14px; background: var(--bg); }
+.diff-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.diff-head .close { margin-left: auto; }
+.diff-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+@media (max-width: 700px) { .diff-cols { grid-template-columns: 1fr; } }
+.diff-col { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 10px; min-width: 0; }
+.diff-col .lbl { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+del.w { background: var(--fail-bg); color: var(--fail); text-decoration: line-through; border-radius: 3px; padding: 0 2px; }
+ins.w { background: var(--pass-bg); color: var(--pass); text-decoration: none; border-radius: 3px; padding: 0 2px; }
+.chk-table { width: 100%; margin-top: 10px; font-size: 12.5px; }
+.chk-table td { padding: 5px 8px; min-width: 120px; }
+.chk-table tr.changed td { background: var(--panel-2); }
+
+/* history chart */
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); margin-bottom: 6px; }
+.legend i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+.chart-wrap { position: relative; }
+.chart-wrap svg { display: block; width: 100%; overflow: visible; }
+.chart-wrap text { fill: var(--muted); font-size: 11px; font-family: Inter, system-ui, sans-serif; }
+.chart-wrap text.v { fill: var(--text); font-weight: 600; }
+.chart-wrap text.lab { fill: var(--text); font-size: 11.5px; }
+.tip { position: absolute; pointer-events: none; background: var(--panel-2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 10px; font-size: 12px; min-width: 170px; display: none; z-index: 2;
+  box-shadow: 0 6px 20px rgba(0,0,0,.35); }
+.tip b { font-family: var(--mono); }
+.tip .row { display: flex; justify-content: space-between; gap: 12px; }
+.tip .row span:first-child { color: var(--muted); }
+.score { display: inline-block; min-width: 30px; text-align: center; font-family: var(--mono); font-size: 11.5px;
+  padding: 1px 6px; border-radius: 6px; background: var(--panel-2); border: 1px solid var(--border); color: var(--text); }
 .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--fail-bg);
   border: 1px solid var(--fail); color: #fff; padding: 10px 16px; border-radius: 10px; display: none;
   max-width: calc(100% - 32px); z-index: 10; }
@@ -233,6 +268,19 @@ details.mongo li { margin: 4px 0; }
       <div style="margin-top:16px" id="verdict-area">
         <div class="verdict empty">Run two versions, then compare them to get a verdict.</div>
       </div>
+      <div id="diff-area"></div>
+    </section>
+
+    <section class="card">
+      <h2>Version history <span class="right"><button class="btn small" id="hist-table-btn">Show table</button></span></h2>
+      <div class="legend" id="hist-legend">
+        <span><i style="background:var(--series-score)"></i>Readiness score (0–100)</span>
+        <span><i style="background:var(--series-pass)"></i>Pass rate (%)</span>
+      </div>
+      <div class="chart-wrap" id="hist-chart"><div class="empty-state">Run a version to start the history</div></div>
+      <div id="hist-table" class="table-wrap" style="display:none;margin-top:10px"></div>
+      <p class="hint">Readiness = 70 × pass rate + 15 × speed + 15 × cost, relative to the baseline run
+        (<span class="mono" id="hist-ref">—</span>). Timeouts count as not passed.</p>
     </section>
 
     <section class="card">
@@ -263,7 +311,7 @@ const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
 const state = {
   versions: [], testCases: [], runs: new Map(), results: new Map(),  // run_id -> Map(tc -> doc)
   selectedRun: null, expanded: new Set(), myRuns: new Set(), comparison: null,
-  mode: "connecting", pollTimer: null,
+  mode: "connecting", pollTimer: null, history: null, diffTc: null,
 };
 
 async function api(path, opts = {}) {
@@ -322,6 +370,7 @@ function renderRuns() {
       : `<span class="tag ${s && s.errors ? "timeout" : s && s.passed === s.total ? "pass" : "fail"}">${s ? s.passed + "/" + s.total : "?"}</span>`;
     return `<li data-id="${esc(r._id)}" class="${r._id === state.selectedRun ? "sel" : ""}">
       <span class="v">${esc(r.prompt_version)}</span>
+      ${scoreOf(r._id) != null ? `<span class="score" title="Readiness score">${scoreOf(r._id)}</span>` : ""}
       <span class="meta">${fmtTime(r.started_at)}${s && s.errors ? ` · ${s.errors} timeout` : ""}<br><span class="mono">${esc(r._id)}</span></span>${tag}</li>`;
   }).join("") : `<li class="empty-state">No runs yet</li>`;
   $("runs").querySelectorAll("li[data-id]").forEach((li) => li.onclick = () => selectRun(li.dataset.id));
@@ -408,7 +457,7 @@ function renderVerdict(c, fresh = false) {
     .map(([k, x]) => `<span class="tag ${k}">${x} ${k.replace("_", " ")}</span>`).join(" ");
   const cells = c.rows.map((r) => {
     const tc = state.testCases.find((t) => t._id === r.test_case_id);
-    return `<div class="cell ${r.change}" title="${esc(tc ? tc.name : "")}"><b>${esc(r.test_case_id)}</b>${esc(r.change.replace("_", " "))}</div>`;
+    return `<button class="cell ${r.change} ${r.test_case_id === state.diffTc ? "sel" : ""}" data-tc="${esc(r.test_case_id)}" title="${esc(tc ? tc.name : "")}: click to compare outputs"><b>${esc(r.test_case_id)}</b>${esc(r.change.replace("_", " "))}</button>`;
   }).join("");
   area.innerHTML = `
     <div class="verdict ${c.verdict} ${fresh ? "fresh" : ""}">
@@ -427,7 +476,151 @@ function renderVerdict(c, fresh = false) {
         <div class="delta ${deltaCls(m.cost_change_pct)}">${fmtPct(m.cost_change_pct)}</div></div>
     </div>
     <div class="grid12">${cells}</div>
+    <p class="hint">Click any test case above to see baseline vs candidate side by side.</p>
     <p class="hint">CI exit code: <code>${c.verdict === "SAFE" ? 0 : c.verdict === "NOT_SAFE" ? 1 : 2}</code> · comparison <code>${esc(c._id)}</code></p>`;
+  area.querySelectorAll(".cell[data-tc]").forEach((el) => el.onclick = () => openDiff(el.dataset.tc));
+  if (fresh) {  // a new verdict: open the first regression (or close a stale diff)
+    const first = c.rows.find((r) => r.change === "regressed") || c.rows.find((r) => r.change === "unverified");
+    first ? openDiff(first.test_case_id) : closeDiff();
+  } else if (state.diffTc) openDiff(state.diffTc);
+}
+
+/* ---------- diff view ---------- */
+
+function wordDiff(a, b) {
+  // Word-level LCS: returns [{t, op}] with op in same | del | add.
+  const x = (a || "").split(/\s+/).filter(Boolean), y = (b || "").split(/\s+/).filter(Boolean);
+  const n = x.length, m = y.length, dp = Array.from({ length: n + 1 }, () => new Uint16Array(m + 1));
+  for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--)
+    dp[i][j] = x[i] === y[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+  const out = []; let i = 0, j = 0;
+  while (i < n && j < m) {
+    if (x[i] === y[j]) { out.push({ t: x[i], op: "same" }); i++; j++; }
+    else if (dp[i + 1][j] >= dp[i][j + 1]) out.push({ t: x[i++], op: "del" });
+    else out.push({ t: y[j++], op: "add" });
+  }
+  while (i < n) out.push({ t: x[i++], op: "del" });
+  while (j < m) out.push({ t: y[j++], op: "add" });
+  return out;
+}
+
+function closeDiff() {
+  state.diffTc = null; $("diff-area").innerHTML = "";
+  document.querySelectorAll(".cell.sel").forEach((el) => el.classList.remove("sel"));
+}
+
+async function openDiff(tcId) {
+  const c = state.comparison;
+  if (!c) return;
+  state.diffTc = tcId;
+  document.querySelectorAll(".cell[data-tc]").forEach((el) => el.classList.toggle("sel", el.dataset.tc === tcId));
+  let d;
+  try {
+    d = await api(`/api/diff?baseline=${encodeURIComponent(c.baseline_run)}&candidate=${encodeURIComponent(c.candidate_run)}&test_case_id=${encodeURIComponent(tcId)}`);
+  } catch (e) { return toast(e.message); }
+  if (state.diffTc !== tcId) return;  // user clicked another case meanwhile
+  const row = c.rows.find((r) => r.test_case_id === tcId) || { change: "" };
+  const words = wordDiff(d.baseline && d.baseline.output, d.candidate && d.candidate.output);
+  const sideHtml = (doc, keep, tagOp) => {
+    if (!doc) return `<span class="detail gray">no result in this run</span>`;
+    if (doc.status !== "ok") return `<span class="detail gray">${esc(doc.status)}: ${esc(doc.error)}</span>`;
+    return `<pre class="out">${words.filter((w) => w.op === "same" || w.op === keep)
+      .map((w) => w.op === "same" ? esc(w.t) : `<${tagOp} class="w">${esc(w.t)}</${tagOp}>`).join(" ")}</pre>`;
+  };
+  const status = (doc) => !doc ? "" : doc.status !== "ok" ? `<span class="tag ${doc.status}">${doc.status.toUpperCase()}</span>`
+    : doc.passed ? `<span class="tag pass">PASS</span>` : `<span class="tag fail">FAIL</span>`;
+  const mark = (p) => p === null ? "—" : p ? "✅" : "❌";
+  const changed = d.checks.filter((k) => k.changed).length;
+  const fmtVal = (v) => v == null ? "" : typeof v === "object" ? JSON.stringify(v) : String(v);
+  $("diff-area").innerHTML = `
+    <div class="diff">
+      <div class="diff-head"><b class="mono">${esc(d.test_case._id)}</b> · ${esc(d.test_case.name)}
+        <span class="tag ${esc(row.change)}">${esc(row.change.replace("_", " "))}</span>
+        <span class="hint" style="margin:0">${esc(d.test_case.risk || "")}</span>
+        <button class="btn small close" id="diff-close">Close</button></div>
+      <div class="hint" style="margin:0 0 4px">Customer input</div><pre class="out">${esc(d.test_case.input)}</pre>
+      <div class="diff-cols">
+        <div class="diff-col"><div class="lbl">Baseline · ${esc(c.baseline_version)} ${status(d.baseline)}</div>${sideHtml(d.baseline, "del", "del")}</div>
+        <div class="diff-col"><div class="lbl">Candidate · ${esc(c.candidate_version)} ${status(d.candidate)}</div>${sideHtml(d.candidate, "add", "ins")}</div>
+      </div>
+      <div class="table-wrap"><table class="chk-table"><thead><tr><th>Check</th><th>${esc(c.baseline_version)}</th><th>${esc(c.candidate_version)}</th></tr></thead><tbody>
+      ${d.checks.map((k) => `<tr class="${k.changed ? "changed" : ""}"><td><code>${esc(k.type)}</code> <span class="hint">${esc(fmtVal(k.value))}</span></td>
+        <td>${mark(k.baseline)} ${esc(k.baseline_detail || "")}</td><td>${mark(k.candidate)} ${esc(k.candidate_detail || "")}</td></tr>`).join("")}
+      </tbody></table></div>
+      <p class="hint">${changed ? `${changed} check(s) changed outcome (highlighted).` : "No check changed outcome."}
+        Red = removed in the candidate, green = added.</p>
+    </div>`;
+  $("diff-close").onclick = closeDiff;
+}
+
+/* ---------- version history chart ---------- */
+
+async function loadHistory() {
+  try { state.history = await api("/api/history?limit=20"); } catch (_) { return; }
+  renderHistory(); renderRuns();
+}
+
+function renderHistory() {
+  const h = state.history, box = $("hist-chart");
+  $("hist-ref").textContent = h && h.reference_run ? h.reference_run : "—";
+  const runs = h ? h.runs.filter((r) => r.readiness) : [];
+  if (!runs.length) { box.innerHTML = `<div class="empty-state">Run a version to start the history</div>`; $("hist-table").innerHTML = ""; return; }
+
+  const W = Math.max(280, box.clientWidth || 600), H = 220, L = 34, R = 84, T = 12, B = 38;
+  const iw = W - L - R, ih = H - T - B, pad = 22;  // keep end points off the axis
+  const xs = (i) => L + pad + (runs.length === 1 ? (iw - 2 * pad) / 2 : (i * (iw - 2 * pad)) / (runs.length - 1));
+  const ys = (v) => T + ih - (v / 100) * ih;
+  const series = [
+    { key: "score", color: "var(--series-score)", val: (r) => r.readiness.score, label: (v) => `Score ${v}` },
+    { key: "pass", color: "var(--series-pass)", val: (r) => Math.round((r.passed / r.total) * 100), label: (v) => `Pass ${v}%` },
+  ];
+  const grid = [0, 25, 50, 75, 100].map((g) => `<line x1="${L}" x2="${L + iw}" y1="${ys(g)}" y2="${ys(g)}" stroke="var(--border)" stroke-width="1"/>
+    <text x="${L - 8}" y="${ys(g) + 4}" text-anchor="end">${g}</text>`).join("");
+  const step = runs.length > 1 ? (iw - 2 * pad) / (runs.length - 1) : iw;
+  const xl = runs.map((r, i) => `<text class="v" x="${xs(i)}" y="${H - B + 16}" text-anchor="middle">${esc(r.version)}</text>` +
+    (step >= 52 ? `<text x="${xs(i)}" y="${H - B + 30}" text-anchor="middle">${esc(fmtTime(r.started).slice(0, 5))}</text>` : "")).join("");
+  const lines = series.map((s) => {
+    const pts = runs.map((r, i) => `${xs(i)},${ys(s.val(r))}`).join(" ");
+    const dots = runs.map((r, i) => `<circle cx="${xs(i)}" cy="${ys(s.val(r))}" r="4.5" fill="${s.color}" stroke="var(--panel)" stroke-width="2"/>`).join("");
+    return (runs.length > 1 ? `<polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>` : "") + dots;
+  }).join("");
+  // direct labels at the last point; nudge apart if they collide
+  const last = runs.length - 1;
+  let ly = series.map((s) => ys(s.val(runs[last])));
+  if (Math.abs(ly[0] - ly[1]) < 14) { const mid = (ly[0] + ly[1]) / 2, up = ly[0] <= ly[1] ? -1 : 1; ly = [mid + up * 7, mid - up * 7]; }
+  const labels = series.map((s, k) => `<text class="lab" x="${xs(last) + 10}" y="${ly[k] + 4}">${s.label(s.val(runs[last]))}</text>`).join("");
+  const bands = runs.map((r, i) => `<rect data-i="${i}" x="${xs(i) - step / 2}" y="${T}" width="${step}" height="${ih}" fill="transparent"/>`).join("");
+  box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" height="${H}" role="img" aria-label="Readiness score and pass rate per run">
+    ${grid}<line id="hist-cross" x1="0" x2="0" y1="${T}" y2="${T + ih}" stroke="var(--muted)" stroke-dasharray="3 3" visibility="hidden"/>
+    ${lines}${labels}${xl}${bands}</svg><div class="tip" id="hist-tip"></div>`;
+
+  const tip = $("hist-tip"), cross = $("hist-cross");
+  box.querySelectorAll("rect[data-i]").forEach((rect) => {
+    rect.onmouseenter = () => {
+      const r = runs[+rect.dataset.i], sc = r.readiness, x = xs(+rect.dataset.i);
+      cross.setAttribute("x1", x); cross.setAttribute("x2", x); cross.setAttribute("visibility", "visible");
+      tip.innerHTML = `<div><b>${esc(r.version)}</b> · ${esc(fmtTime(r.started))}${r.run_id === h.reference_run ? " · baseline" : ""}</div>
+        <div class="row"><span>Readiness</span><span>${sc.score} <span class="hint">(${sc.quality}+${sc.speed}+${sc.cost})</span></span></div>
+        <div class="row"><span>Passed</span><span>${r.passed}/${r.total}${r.errors ? ` · ${r.errors} timeout` : ""}</span></div>
+        <div class="row"><span>p95</span><span>${r.p95_ms ?? "—"} ms</span></div>
+        <div class="row"><span>Cost</span><span>${fmtCost(r.total_cost)}</span></div>`;
+      tip.style.display = "block";
+      const left = Math.min(Math.max(0, (x / W) * box.clientWidth + 12), box.clientWidth - tip.offsetWidth);
+      tip.style.left = left + "px"; tip.style.top = "4px";
+    };
+    rect.onmouseleave = () => { tip.style.display = "none"; cross.setAttribute("visibility", "hidden"); };
+    rect.onclick = () => selectRun(runs[+rect.dataset.i].run_id);
+  });
+
+  $("hist-table").innerHTML = `<table><thead><tr><th>Run</th><th>Ver</th><th style="text-align:right">Score</th><th style="text-align:right">Passed</th>
+    <th style="text-align:right">p95</th><th style="text-align:right">Cost</th></tr></thead><tbody>${[...runs].reverse().map((r) =>
+    `<tr><td class="mono">${esc(r.run_id)}</td><td>${esc(r.version)}</td><td class="num">${r.readiness.score}</td>
+     <td class="num">${r.passed}/${r.total}</td><td class="num">${r.p95_ms ?? "—"} ms</td><td class="num">${fmtCost(r.total_cost)}</td></tr>`).join("")}</tbody></table>`;
+}
+
+function scoreOf(runId) {
+  const r = state.history && state.history.runs.find((x) => x.run_id === runId);
+  return r && r.readiness ? r.readiness.score : null;
 }
 
 function setLive(mode, detail = "") {
@@ -451,6 +644,7 @@ function upsertRun(run) {
     const s = run.summary || {};
     log(`run ${esc(run._id)} ${esc(run.status)}: ${s.passed}/${s.total} passed`, "ok");
     if (state.myRuns.has(run._id)) onMyRunFinished(run);
+    loadHistory();
   }
 }
 
@@ -480,6 +674,7 @@ async function loadAll() {
   renderRuns();
   if (latest && !state.comparison) { state.comparison = latest; renderVerdict(latest); }
   if (!state.selectedRun && runs[0]) await selectRun(runs[0]._id);
+  await loadHistory();
 }
 
 async function onMyRunFinished(run) {
@@ -585,6 +780,12 @@ async function init() {
 }
 
 $("run-btn").onclick = startRun;
+$("hist-table-btn").onclick = () => {
+  const t = $("hist-table"), show = t.style.display === "none";
+  t.style.display = show ? "block" : "none"; $("hist-table-btn").textContent = show ? "Hide table" : "Show table";
+};
+let resizeTimer;
+window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(renderHistory, 150); });
 $("compare-btn").onclick = doCompare;
 $("refresh-btn").onclick = () => loadAll().catch((e) => toast(e.message));
 ["baseline", "candidate"].forEach((id) => $(id).addEventListener("change", () => ($(id).dataset.touched = "1")));
@@ -607,7 +808,8 @@ $("reset-btn").onclick = async () => {
   const r = await demo("/api/demo/reset", () => "run history cleared");
   if (r) { state.runs.clear(); state.results.clear(); state.selectedRun = null; state.comparison = null;
     ["baseline", "candidate"].forEach((id) => delete $(id).dataset.touched);
-    renderRuns(); renderResults(); renderVerdict(null); }
+    state.history = null; closeDiff();
+    renderRuns(); renderResults(); renderVerdict(null); renderHistory(); }
 };
 init();
 </script>

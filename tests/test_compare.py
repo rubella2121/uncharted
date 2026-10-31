@@ -134,3 +134,57 @@ def test_decide_order():
 def test_exit_codes():
     assert exit_code("SAFE") == 0 and exit_code("NOT_SAFE") == 1
     assert exit_code("RISKY") == 2 and exit_code("INCONCLUSIVE") == 2
+
+
+from guard.compare import case_diff, readiness_score, run_history  # noqa: E402
+
+
+def test_readiness_score_weights():
+    ref = {"p95_ms": 100, "total_cost": 1.0}
+    perfect = readiness_score({"passed": 12, "total": 12, "p95_ms": 100, "total_cost": 1.0}, ref)
+    assert perfect == {"score": 100, "quality": 70.0, "speed": 15.0, "cost": 15.0}
+    slow = readiness_score({"passed": 12, "total": 12, "p95_ms": 200, "total_cost": 0.5}, ref)
+    assert slow["speed"] == 7.5 and slow["cost"] == 15.0  # cheaper is capped, not a bonus
+    assert readiness_score({"passed": 0, "total": 0}, ref)["quality"] == 0
+
+
+def test_run_history_scores_demo_story(history):
+    h = run_history(history)
+    assert h["reference_run"] == "run_v1"
+    by_id = {r["run_id"]: r for r in h["runs"]}
+    assert [r["run_id"] for r in h["runs"]][0] == "run_v1"  # oldest first
+    score = {k: v["readiness"]["score"] for k, v in by_id.items()}
+    assert score["run_v2"] < score["run_v3"] < score["run_v1"]  # broken < costly < baseline
+    assert score["run_v3_timeouts"] < score["run_v3"]
+    assert by_id["run_v3_timeouts"]["errors"] == 3
+    assert by_id["run_v1"]["status"] == "completed"
+
+
+def test_run_history_limit_keeps_newest(history):
+    h = run_history(history, limit=2)
+    assert [r["run_id"] for r in h["runs"]] == ["run_v3", "run_v3_timeouts"]
+
+
+def test_run_history_empty(db):
+    assert run_history(db) == {"reference_run": None, "runs": []}
+
+
+def test_case_diff_shows_what_broke(history):
+    d = case_diff(history, "run_v1", "run_v2", "tc07")
+    changed = [c for c in d["checks"] if c["changed"]]
+    assert len(changed) == 1 and changed[0]["type"] == "contains_keyword"
+    assert changed[0]["baseline"] is True and changed[0]["candidate"] is False
+    assert "sorry" in d["baseline"]["output"].lower()
+    assert "sorry" not in d["candidate"]["output"].lower()
+    assert d["test_case"]["name"] == "double charge complaint"
+
+
+def test_case_diff_with_timeout(history):
+    d = case_diff(history, "run_v1", "run_v3_timeouts", "tc03")
+    assert d["candidate"]["status"] == "timeout" and d["candidate"]["output"] is None
+    assert all(c["candidate"] is None for c in d["checks"])
+
+
+def test_case_diff_unknown(history):
+    with pytest.raises(ValueError):
+        case_diff(history, "run_v1", "run_v2", "tc99")
