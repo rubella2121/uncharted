@@ -25,6 +25,7 @@ Production Use Cases (MongoDB track).
 |---|---|
 | **Live demo** | _Not yet deployed. Add the Render URL here once the service is live (see [Deployment](#deployment))._ |
 | **Demo video** | _Add the link before submission._ |
+| **Project documentation** | [docs/DOCUMENTATION.md](docs/DOCUMENTATION.md): overview, implementation, technology choices, impact, access instructions, attribution |
 
 > [!NOTE]
 > The demo uses a **scripted, deterministic mock model**, not a real LLM. Every output,
