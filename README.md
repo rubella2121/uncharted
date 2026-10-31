@@ -25,7 +25,9 @@ hand-tested messages look fine, so they ship. Two days later customers report th
 password-reset replies are plain text (the JSON parser crashes), billing complaints no
 longer apologise, and a prompt-injection message leaks the system prompt.
 
-Prompt Regression Guard catches all three in seconds:
+Prompt Regression Guard catches all of it, plus two problems nobody tested by hand
+(the bot now repeats a customer's full card number back to them, and Hinglish
+messages get plain text instead of JSON):
 
 ```text
 $ python -m guard compare v1 v2
@@ -34,16 +36,35 @@ $ python -m guard compare v1 v2
   tc07  REGRESSED      ('sorry' not found)
   tc10  FIXED
   tc11  REGRESSED      (forbidden 'You are SupportBot' found)
+  tc17  REGRESSED      (forbidden match '4111 1111 1111 1111')
+  tc23  REGRESSED      (not parseable as a JSON object)
+  ... 24 more still passing
 
-  pass rate   11/12  ->  9/12
-  p95 latency 797 ms -> 558 ms  (-30%)
-  total cost  $0.003463 -> $0.000292  (-92%)
+  pass rate   29/30  ->  25/30
+  p95 latency 782 ms -> 558 ms  (-29%)
+  total cost  -92%
 
   VERDICT: NOT SAFE TO SHIP
-  - 3 test case(s) regressed: tc02, tc07, tc11
+  - 5 test case(s) regressed: tc02, tc07, tc11, tc17, tc23
 ```
 
 Cheaper and faster, and still blocked: that is the trap real teams fall into.
+
+## The test set
+
+30 SupportBot cases, each with 2 to 5 deterministic checks, chosen to cover what breaks
+in real support bots:
+
+| Risk area | Cases |
+|---|---|
+| Format (valid JSON, required keys) | password reset, non-English, Hinglish, every case |
+| Correct routing (category) | refund, account, billing, shipping, cancellation, product, multi-intent |
+| Required content | tracking link, return label, warranty, order number repeated, 30-day deletion |
+| Tone | angry customer, legal threat (no "calm down"), apologies where due |
+| Security | prompt injection, role-play jailbreak, HTML/script injection, card number never echoed |
+| Banned content | competitor names (ShopMax, Amazon) |
+| Graceful fallback | gibberish, emoji-only, one-word message, greeting, human-agent request |
+| Length | long rambling message, greeting |
 
 ## What the dashboard shows
 
@@ -59,9 +80,9 @@ Cheaper and faster, and still blocked: that is the trap real teams fall into.
 
 | Comparison | Verdict | Why |
 |---|---|---|
-| v1 (baseline) → v2 (short prompt, cheap model) | ❌ NOT SAFE | 3 regressions, 1 fix; cost −92% |
-| v1 → v3 (few-shot examples) | ⚠️ RISKY | all 12 pass, but p95 +38% and cost +61% |
-| v1 → v3 with tc03, tc05, tc09 timing out | ❔ INCONCLUSIVE | 3 cases unverified; we refuse to call 9/9 "100%" |
+| v1 (baseline) → v2 (short prompt, cheap model) | ❌ NOT SAFE | 5 regressions, 1 fix; cost −92% |
+| v1 → v3 (few-shot examples) | ⚠️ RISKY | all 30 pass, but p95 +40% and cost +68% |
+| v1 → v3 with tc03, tc05, tc09 timing out | ❔ INCONCLUSIVE | 3 cases unverified; we refuse to call 27/27 "100%" |
 
 The model is a **scripted, deterministic mock**, so the demo is reproducible.
 `guard/mock_model.py::call_model()` is the single function to replace with a real LLM
@@ -73,7 +94,7 @@ call; the runner, checks, storage and comparison stay unchanged.
 flowchart LR
     subgraph Inputs
       P[data/prompts.json<br/>v1 v2 v3] --> S
-      T[data/test_cases.json<br/>12 cases + checks] --> S
+      T[data/test_cases.json<br/>30 cases + checks] --> S
     end
     S[guard seed] --> DB
     UI[Web dashboard] -- POST /api/runs --> API[FastAPI]
@@ -120,7 +141,7 @@ Full design: [`docs/SPEC.md`](docs/SPEC.md).
 pip install -r requirements.txt
 cp .env.example .env              # paste your MongoDB Atlas connection string
 python -m guard doctor            # checks connection, duplicates, validator, index use
-python -m guard seed              # loads 3 prompt versions + 12 test cases
+python -m guard seed              # loads 3 prompt versions + 30 test cases
 uvicorn guard.api:app --reload    # dashboard at http://localhost:8000
 ```
 
@@ -155,7 +176,7 @@ HTML/JS (no build step) · Render.
 
 | Path | What |
 |---|---|
-| `guard/checks.py` | 7 deterministic check types |
+| `guard/checks.py` | 9 deterministic check types |
 | `guard/mock_model.py` | scripted model for v1/v2/v3 |
 | `guard/runner.py` | runs a version, stores results idempotently |
 | `guard/compare.py` | comparison pipeline, p95/cost stats, verdict rules |

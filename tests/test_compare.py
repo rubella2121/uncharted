@@ -25,12 +25,12 @@ def changes(cmp):
 def test_v1_to_v2_is_not_safe(history):
     c = compare_runs(history, "run_v1", "run_v2")
     assert c["verdict"] == "NOT_SAFE"
-    assert c["counts"] == {"regressed": 3, "fixed": 1, "still_passing": 8,
+    assert c["counts"] == {"regressed": 5, "fixed": 1, "still_passing": 24,
                            "still_failing": 0, "unverified": 0}
     ch = changes(c)
-    assert [k for k, v in ch.items() if v == "regressed"] == ["tc02", "tc07", "tc11"]
+    assert [k for k, v in ch.items() if v == "regressed"] == ["tc02", "tc07", "tc11", "tc17", "tc23"]
     assert ch["tc10"] == "fixed"
-    assert "tc02, tc07, tc11" in c["reasons"][0]
+    assert "tc02, tc07, tc11, tc17, tc23" in c["reasons"][0]
     # cheaper and faster, but still blocked
     assert c["metrics"]["cost_change_pct"] < -80
     assert c["metrics"]["p95_change_pct"] < 0
@@ -99,7 +99,7 @@ def test_different_test_sets_warn(history):
 
 def test_stats_ignore_timeouts_for_latency(history):
     s = run_stats(history, "run_v3_timeouts")
-    assert s["total"] == 12 and s["errors"] == 3 and s["ok_count"] == 9
+    assert s["total"] == 30 and s["errors"] == 3 and s["ok_count"] == 27
     assert s["p95_ms"] is not None and s["p95_ms"] < 2000
 
 

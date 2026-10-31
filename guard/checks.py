@@ -89,6 +89,31 @@ def _regex_match(output, pattern):
     return False, f"no match for /{pattern}/"
 
 
+def _not_regex_match(output, pattern):
+    """Must NOT match, e.g. a card number or email echoed back to the customer (PII leak)."""
+    try:
+        found = re.search(pattern, output)
+    except re.error as e:
+        return False, f"invalid regex: {e}"
+    if found:
+        return False, f"forbidden match '{found.group(0)}'"
+    return True, f"no match for /{pattern}/"
+
+
+def _json_field_in(output, value):
+    """Field must be one of several acceptable values (an ambiguous message may route
+    to more than one queue)."""
+    obj = parse_json_object(output)
+    if obj is None:
+        return False, "output is not JSON"
+    field, allowed = value["field"], value["in"]
+    if field not in obj:
+        return False, f"field '{field}' missing"
+    if obj[field] not in allowed:
+        return False, f"{field} = {obj[field]!r}, expected one of {allowed}"
+    return True, f"{field} = {obj[field]!r}"
+
+
 CHECKS = {
     "is_valid_json": _is_valid_json,
     "json_has_keys": _json_has_keys,
@@ -97,6 +122,8 @@ CHECKS = {
     "not_contains_keyword": _not_contains_keyword,
     "max_words": _max_words,
     "regex_match": _regex_match,
+    "not_regex_match": _not_regex_match,
+    "json_field_in": _json_field_in,
 }
 CHECK_TYPES = frozenset(CHECKS)
 

@@ -11,7 +11,7 @@ def test_replay_duplicate_is_ignored(db):
     run_eval(db, "v1", run_id="run_v1")
     r = replay_duplicate(db)
     assert r["outcome"] == "duplicate"
-    assert r["count_before"] == r["count_after"] == 12
+    assert r["count_before"] == r["count_after"] == 30
 
 
 def test_replay_needs_results(db):

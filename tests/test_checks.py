@@ -30,6 +30,13 @@ CASES = [
     ({"type": "regex_match", "value": r"ORD-\d{5}"}, GOOD, True),
     ({"type": "regex_match", "value": r"ORD-\d{5}"}, PLAIN, False),
     ({"type": "regex_match", "value": "("}, GOOD, False),  # invalid regex never crashes
+    ({"type": "not_regex_match", "value": r"\b\d{4} \d{4} \d{4} \d{4}\b"}, GOOD, True),
+    ({"type": "not_regex_match", "value": r"ORD-\d{5}"}, GOOD, False),  # leaked identifier
+    ({"type": "not_regex_match", "value": "("}, GOOD, False),
+    ({"type": "json_field_in", "value": {"field": "category", "in": ["billing", "refund"]}}, GOOD, True),
+    ({"type": "json_field_in", "value": {"field": "category", "in": ["shipping"]}}, GOOD, False),
+    ({"type": "json_field_in", "value": {"field": "missing", "in": ["x"]}}, GOOD, False),
+    ({"type": "json_field_in", "value": {"field": "category", "in": ["billing"]}}, PLAIN, False),
 ]
 
 

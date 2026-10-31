@@ -25,7 +25,7 @@ from guard import demo as demomod
 from guard import runner
 from guard.seed import seed
 
-LIVE_DELAY_S = 0.35          # pause between test cases so rows visibly stream in
+LIVE_DELAY_S = 0.2           # pause between test cases so rows visibly stream in (30 cases ≈ 6 s)
 MAX_CONCURRENT_RUNS = 3      # the deployment is public; keep it from being flooded
 HEARTBEAT_S = 15             # keeps proxies from closing an idle SSE connection
 
@@ -39,12 +39,11 @@ def get_db():
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    # Make a fresh deployment usable immediately: schema + demo data if missing.
+    # Make a deployment usable immediately: schema + demo data, kept in sync with data/*.json.
     try:
         database = get_db()
         dbmod.ensure_schema(database)
-        if database[config.PROMPT_VERSIONS].count_documents({}, limit=1) == 0:
-            seed(database)
+        seed(database)  # idempotent upsert: picks up edits to data/*.json on every start
     except Exception as e:  # never block startup; /api/health reports the problem
         print(f"[startup] database not ready: {e}")
     yield

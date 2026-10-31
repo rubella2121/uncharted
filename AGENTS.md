@@ -62,7 +62,7 @@ guard/compare.py     compare_pipeline(), run_stats(), decide(), compare_runs(db,
 guard/demo.py        replay_duplicate(), insert_incomplete()  (failure-case demos)
 guard/api.py         FastAPI app: REST + /api/stream SSE (change streams); `uvicorn guard.api:app --reload`
 web/index.html       dashboard: single page, plain JS, no build step (REST first, then SSE)
-data/*.json          prompts.json (v1,v2,v3), test_cases.json (tc01..tc12)
+data/*.json          prompts.json (v1,v2,v3), test_cases.json (tc01..tc30)
 tests/               pytest; conftest.py gives a mongomock `db` fixture
 docs/                SPEC (design), PROGRESS (status), DEPLOY, DEMO_SCRIPT, PPT_OUTLINE
 render.yaml, Dockerfile, Procfile   deployment (always 1 worker)

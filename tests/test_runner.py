@@ -11,11 +11,11 @@ def seeded(db):
     return db
 
 
-def test_run_v1_stores_12_results(seeded):
+def test_run_v1_stores_30_results(seeded):
     run = run_eval(seeded, "v1", run_id="run_v1_t")
     assert run["status"] == "completed"
-    assert run["summary"]["total"] == 12 and run["summary"]["passed"] == 11
-    assert seeded[config.EVAL_RESULTS].count_documents({"run_id": "run_v1_t"}) == 12
+    assert run["summary"]["total"] == 30 and run["summary"]["passed"] == 29
+    assert seeded[config.EVAL_RESULTS].count_documents({"run_id": "run_v1_t"}) == 30
     tc10 = seeded[config.EVAL_RESULTS].find_one({"run_id": "run_v1_t", "test_case_id": "tc10"})
     assert tc10["passed"] is False and tc10["status"] == "ok"
 
@@ -45,7 +45,7 @@ def test_model_exception_is_recorded_as_error(seeded):
     run = run_eval(seeded, "v1", run_id="run_err", model_fn=broken_model)
     doc = seeded[config.EVAL_RESULTS].find_one({"run_id": "run_err"})
     assert doc["status"] == "error" and "rate limited" in doc["error"]
-    assert run["summary"]["errors"] == 12
+    assert run["summary"]["errors"] == 30
 
 
 def test_resumed_run_skips_stored_results(seeded):
@@ -59,17 +59,17 @@ def test_resumed_run_skips_stored_results(seeded):
     run = run_eval(seeded, "v1", run_id="run_resume", model_fn=counting_model,
                    on_result=events.append)
     assert not calls
-    assert run["summary"]["skipped"] == 12 and run["summary"]["total"] == 12
+    assert run["summary"]["skipped"] == 30 and run["summary"]["total"] == 30
     assert {e["outcome"] for e in events} == {"skipped"}
 
 
 def test_partial_resume_fills_only_missing(seeded):
     run_eval(seeded, "v1", run_id="run_partial")
-    seeded[config.EVAL_RESULTS].delete_many({"run_id": "run_partial", "test_case_id": {"$gt": "tc06"}})
+    seeded[config.EVAL_RESULTS].delete_many({"run_id": "run_partial", "test_case_id": {"$gt": "tc15"}})
     events = []
     run_eval(seeded, "v1", run_id="run_partial", on_result=events.append)
     outcomes = [e["outcome"] for e in events]
-    assert outcomes.count("skipped") == 6 and outcomes.count("inserted") == 6
+    assert outcomes.count("skipped") == 15 and outcomes.count("inserted") == 15
 
 
 def test_unknown_version(seeded):
@@ -87,7 +87,7 @@ def test_no_test_cases(db):
 def test_on_result_called_per_case(seeded):
     events = []
     run_eval(seeded, "v2", run_id="run_cb", on_result=events.append)
-    assert [e["test_case_id"] for e in events] == [f"tc{i:02d}" for i in range(1, 13)]
+    assert [e["test_case_id"] for e in events] == [f"tc{i:02d}" for i in range(1, 31)]
 
 
 def test_compute_cost():
@@ -106,4 +106,4 @@ def test_new_runs_in_same_second_get_distinct_ids(seeded):
     a = run_eval(seeded, "v1")["_id"]
     b = run_eval(seeded, "v1")["_id"]
     assert a != b
-    assert seeded[config.EVAL_RESULTS].count_documents({"run_id": b}) == 12
+    assert seeded[config.EVAL_RESULTS].count_documents({"run_id": b}) == 30

@@ -20,6 +20,8 @@ def test_good_output_passes_every_check(tc_id):
     (("v2", "tc02"), "is_valid_json"),
     (("v2", "tc07"), "contains_keyword"),
     (("v2", "tc11"), "not_contains_keyword"),
+    (("v2", "tc17"), "not_regex_match"),
+    (("v2", "tc23"), "is_valid_json"),
 ])
 def test_broken_output_fails_for_the_intended_reason(key, expected_failure):
     _, results = run_checks(CASES[key[1]]["checks"], BROKEN_OUTPUTS[key])

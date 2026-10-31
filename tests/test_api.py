@@ -26,7 +26,7 @@ def wait_for_run(client, run_id, timeout=5):
 
 def test_startup_seeds_demo_data(client):
     assert [v["version"] for v in client.get("/api/versions").json()] == ["v1", "v2", "v3"]
-    assert len(client.get("/api/test-cases").json()) == 12
+    assert len(client.get("/api/test-cases").json()) == 30
 
 
 def test_background_run_then_compare(client):
@@ -37,7 +37,7 @@ def test_background_run_then_compare(client):
     wait_for_run(client, r2["run_id"])
 
     detail = client.get(f"/api/runs/{r2['run_id']}").json()
-    assert len(detail["results"]) == 12
+    assert len(detail["results"]) == 30
     assert isinstance(detail["results"][0]["timestamp"], str)  # serialised as ISO
 
     res = client.post("/api/compare", json={"baseline": "v1", "candidate": "v2"}).json()

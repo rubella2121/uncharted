@@ -11,9 +11,9 @@ Update this file in the same commit as the work. Mark a step done only when its
 | # | Step | Files | Done when | Status |
 |---|---|---|---|---|
 | 1 | Foundation: config, stable IDs, collections, validators, indexes, `setup`/`doctor` CLI, handoff docs | `guard/config.py`, `guard/ids.py`, `guard/db.py`, `guard/cli.py`, `tests/test_ids.py`, `tests/test_db.py`, docs | `pytest` green; `guard doctor` passes against Atlas | ✅ done (verified on Atlas, MongoDB 8.0) |
-| 2 | Checks + demo data | `guard/checks.py`, `data/prompts.json`, `data/test_cases.json`, `tests/test_checks.py`, `guard seed` | each check type has a pass and a fail test; `guard seed` loads 3 versions + 12 cases (idempotent upsert) | ✅ done |
-| 3 | Mock model + runner | `guard/mock_model.py`, `guard/runner.py`, `guard run` | `guard run v1` stores 12 results (11 pass); re-running a stored result is ignored; `--simulate-timeouts` works; `guard run v99` exits 3 | ✅ done |
-| 4 | Comparison + verdict | `guard/compare.py`, `guard compare`, `tests/test_compare.py` | v1→v2 NOT_SAFE (3 regressed, 1 fixed); v1→v3 RISKY; v1→v3+timeouts INCONCLUSIVE; exit codes correct | ✅ done |
+| 2 | Checks + demo data | `guard/checks.py`, `data/prompts.json`, `data/test_cases.json`, `tests/test_checks.py`, `guard seed` | each check type has a pass and a fail test; `guard seed` loads 3 versions + 30 cases (idempotent upsert) | ✅ done |
+| 3 | Mock model + runner | `guard/mock_model.py`, `guard/runner.py`, `guard run` | `guard run v1` stores 30 results (29 pass); re-running a stored result is ignored; `--simulate-timeouts` works; `guard run v99` exits 3 | ✅ done |
+| 4 | Comparison + verdict | `guard/compare.py`, `guard compare`, `tests/test_compare.py` | v1→v2 NOT_SAFE (5 regressed, 1 fixed); v1→v3 RISKY; v1→v3+timeouts INCONCLUSIVE; exit codes correct | ✅ done |
 | 5 | API | `guard/api.py` | all endpoints in SPEC §12 respond; runs can be started from HTTP | ✅ done (SSE verified only via polling fallback; check live against Atlas) |
 | 6 | Live dashboard | `web/index.html`, SSE endpoints | rows appear live while a run executes; verdict banner updates; buttons for run / compare / timeouts / duplicate / reset | ✅ done (browser-tested against mongomock in polling mode) |
 | 7 | Deploy | `render.yaml` or equivalent, README deploy section | public URL works against Atlas; judges can run the full demo from the browser | 🟡 config ready (`render.yaml`, `Dockerfile`, `Procfile`, `docs/DEPLOY.md`); **a team member must deploy** |
@@ -47,8 +47,8 @@ runs on re-setup).
 
 | Comparison | Verdict | Counts | p95 | Cost |
 |---|---|---|---|---|
-| v1→v2 | NOT_SAFE | 3 regressed (tc02, tc07, tc11), 1 fixed (tc10) | 797→558 ms (-30%) | -92% |
-| v1→v3 | RISKY | 0 regressed, 1 fixed | 797→1101 ms (+38%) | +61% |
+| v1→v2 | NOT_SAFE | 5 regressed (tc02, tc07, tc11, tc17, tc23), 1 fixed (tc10) | 782→558 ms (-29%) | -92% |
+| v1→v3 | RISKY | 0 regressed, 1 fixed | 782→1091 ms (+40%) | +68% |
 | v1→v3 + timeouts tc03,tc05,tc09 | INCONCLUSIVE | 3 unverified | | |
 
 ## Log
@@ -61,3 +61,4 @@ runs on re-setup).
 - 31 Oct 03:00 IST: Step 6 dashboard (live table, verdict banner, auto-compare, failure buttons, query plan), `guard explain` + `/api/explain`, deploy config (Render/Docker/Procfile), GitHub Actions (tests + prompt-guard gate example), README, DEPLOY, DEMO_SCRIPT, PPT_OUTLINE. 118 tests green. Dashboard verified in Chromium (desktop + 390px mobile).
 - 31 Oct: Atlas verified by the team: dashboard shows MongoDB 8.0 + live change stream, RISKY verdict and IXSCAN plan as expected. Fixed tc12 Spanish output being shown as \u escapes (ensure_ascii=False).
 - 31 Oct: Insights added: side-by-side case diff with word highlighting and check-by-check table (auto-opens first regression), version history chart (aggregation + $lookup), readiness score 0-100 in chart, run list and `guard history`. 126 tests green; UI verified in Chromium incl. 390px.
+- 31 Oct: Test set expanded 12 → 30 cases (PII, jailbreak, HTML injection, Hinglish, emoji, legal threat, multi-intent, data deletion, ...) and 2 new check types (`not_regex_match`, `json_field_in`). v2 now regresses 5 cases. Verdicts unchanged in kind. Live delay 0.35 → 0.2 s. 153 tests green.

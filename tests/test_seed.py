@@ -12,13 +12,13 @@ def test_shipped_data_is_valid():
     validate_prompts(prompts)
     validate_test_cases(cases)
     assert [p["version"] for p in prompts] == ["v1", "v2", "v3"]
-    assert [c["_id"] for c in cases] == [f"tc{i:02d}" for i in range(1, 13)]
+    assert [c["_id"] for c in cases] == [f"tc{i:02d}" for i in range(1, 31)]
 
 
 def test_seed_loads_everything(db):
     seed(db)
     assert db[config.PROMPT_VERSIONS].count_documents({}) == 3
-    assert db[config.TEST_CASES].count_documents({}) == 12
+    assert db[config.TEST_CASES].count_documents({}) == 30
     v2 = db[config.PROMPT_VERSIONS].find_one({"_id": "supportbot:v2"})
     assert v2["model"] == "mock-mini" and v2["created_at"] is not None
 
@@ -28,7 +28,7 @@ def test_seed_is_idempotent(db):
     first = db[config.PROMPT_VERSIONS].find_one({"_id": "supportbot:v1"})["created_at"]
     log = seed(db)
     assert db[config.PROMPT_VERSIONS].count_documents({}) == 3
-    assert db[config.TEST_CASES].count_documents({}) == 12
+    assert db[config.TEST_CASES].count_documents({}) == 30
     assert all("updated" in line for line in log)
     assert db[config.PROMPT_VERSIONS].find_one({"_id": "supportbot:v1"})["created_at"] == first
 
