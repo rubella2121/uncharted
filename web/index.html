@@ -50,7 +50,7 @@ header p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
 .pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px;
   border-radius: 999px; background: var(--panel-2); border: 1px solid var(--border);
   font-size: 12px; color: var(--muted); white-space: nowrap; }
-.pill.mock { color: var(--warn); border-color: #6b5320; background: var(--warn-bg); cursor: help; }
+.pill.mock { color: var(--warn); border-color: #6b5320; background: var(--warn-bg); }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gray); }
 .dot.on { background: var(--accent); }
 .dot.off { background: var(--fail); }
@@ -68,6 +68,7 @@ main { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 16px; pa
   #verdict-card { order: 1; } #run-card { order: 2; } #results-card { order: 3; }
   #history-card { order: 4; } #runs-card { order: 5; } #failure-card { order: 6; }
   #mongo-card { order: 7; } #log-card { order: 8; }
+  .card > h2 .step { display: none; }  /* numbering would contradict the reordered sections */
 }
 .card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--r-card);
   padding: 16px; min-width: 0; }
@@ -113,7 +114,8 @@ details.timeouts > summary:hover { color: var(--text-2); }
 .check-row input { width: 16px; height: 16px; accent-color: var(--accent); margin: 0; }
 
 /* run history */
-.runs { list-style: none; margin: 0; padding: 0; max-height: 320px; overflow: auto; display: grid; gap: 2px; }
+.runs { list-style: none; margin: 0; padding: 0; max-height: 320px; overflow: auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; }
+.runs .tag { flex: none; }
 .runs li { border-radius: var(--r-ctl); border: 1px solid transparent; }
 .runs li.sel { border-color: var(--control-border); background: var(--panel-2); }
 .run-btn { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px; background: none;
@@ -137,7 +139,7 @@ details.timeouts > summary:hover { color: var(--text-2); }
 
 /* verdict */
 #verdict-area { transition: opacity .2s; }
-#verdict-area.stale { opacity: .45; }
+#verdict-area.stale { opacity: .72; }
 .pending-note { display: none; align-items: center; gap: 8px; margin-top: 14px; font-size: 13px; color: var(--info); }
 .pending-note.on { display: flex; }
 .verdict { border-radius: var(--r-card); padding: 16px 18px; background: var(--panel-2);
@@ -192,6 +194,7 @@ details.rules dt { font-weight: 600; } details.rules dd { margin: 0; }
 .cell.unverified { border: 1px dashed var(--gray); color: #b5c0ca; }
 .cell.still_failing { border-color: #8a6524; color: var(--warn); }
 .cell.sel { outline: 2px solid var(--text); outline-offset: 1px; }
+.cell.sel:focus-visible { outline-color: var(--focus); }
 .compare-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; align-items: end; }
 @media (max-width: 560px) { .compare-row { grid-template-columns: 1fr; } }
 .compare-row label.field { margin-top: 0; }
@@ -211,7 +214,7 @@ tr.res:hover td { background: var(--panel-2); }
 tr.pending td { color: var(--muted); }
 tr.pending .tc-name { opacity: .6; }
 @keyframes arrive { from { background: var(--panel-3); } to { background: transparent; } }
-tr.new td { animation: arrive .9s ease-out; }
+tr.new td { animation: arrive .25s ease-out; }
 .row-toggle { display: flex; gap: 6px; align-items: flex-start; background: none; border: 0; padding: 0;
   text-align: left; cursor: pointer; }
 .row-toggle .chev { color: var(--muted); transition: transform .15s; margin-top: 3px; }
@@ -221,13 +224,25 @@ tr.new td { animation: arrive .9s ease-out; }
 .detail code { font-size: 12px; }
 .detail.gray { color: #b5c0ca; }
 tr.expand td { background: var(--panel-2); }
+@media (max-width: 560px) {
+  #results-card thead { display: none; }
+  #results-card tbody tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px;
+    border-bottom: 1px solid var(--border); padding: 8px 0; }
+  #results-card tbody td { border: 0; padding: 2px 0; }
+  #results-card tbody td:nth-child(2) { text-align: right; }
+  #results-card tbody td:nth-child(3) { grid-column: 1 / -1; padding-left: 20px; }
+  #results-card tbody td.num { display: none; }
+  #results-card tbody tr.expand td, #results-card tbody td.empty-state { grid-column: 1 / -1; }
+  #results-card .table-wrap { overflow: visible; }
+}
 pre.out { white-space: pre-wrap; word-break: break-word; margin: 0; font-family: var(--mono);
   font-size: 12px; color: var(--text); }
 .checklist { margin: 8px 0 0; padding: 0; list-style: none; font-size: 12.5px; }
 .checklist li { padding: 2px 0; display: flex; gap: 6px; align-items: baseline; }
 .ok-c { color: var(--pass); } .bad-c { color: var(--fail); }
 .progress { height: 3px; background: var(--panel-2); border-radius: 2px; overflow: hidden; margin-bottom: 12px; }
-.progress div { height: 100%; background: var(--accent); width: 0; transition: width .3s var(--ease); }
+.progress div { height: 100%; background: var(--text-2); width: 0; transition: width .3s var(--ease); }
+.progress.done { visibility: hidden; }
 .empty-state { color: var(--muted); text-align: center; padding: 28px 10px; }
 
 /* log + misc */
@@ -235,7 +250,8 @@ pre.out { white-space: pre-wrap; word-break: break-word; margin: 0; font-family:
   background: var(--bg); border-radius: var(--r-ctl); padding: 8px 10px; border: 1px solid var(--border); }
 .log div { padding: 1px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .log .t { color: var(--muted); }
-.log .ok { color: var(--pass); } .log .bad { color: var(--fail); } .log .ev { color: var(--info); }
+.log .ok { color: var(--pass); } .log .bad { color: var(--fail); } .log .warn { color: var(--warn); }
+.log .info { color: var(--info); } .log .ev { color: var(--text-2); } .log .neutral { color: var(--text); }
 .demo-btns { display: grid; grid-template-columns: 1fr; gap: 8px; }
 .demo-btns .btn { text-align: left; padding: 9px 12px; }
 .demo-btns .btn small { display: block; color: var(--muted); font-weight: 400; font-size: 12px; margin-top: 1px; }
@@ -276,7 +292,8 @@ ins.w { background: var(--pass-bg); color: var(--pass); text-decoration: underli
 .tip .row { display: flex; justify-content: space-between; gap: 12px; }
 .tip .row span:first-child { color: var(--muted); }
 .git { font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
-.git a { color: var(--info); text-decoration: none; } .git a:hover { text-decoration: underline; }
+.git a { color: var(--text-2); text-decoration: underline; text-decoration-color: var(--control-border); }
+.git a:hover { color: var(--text); text-decoration-color: currentColor; }
 .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--fail-bg);
   border: 1px solid var(--fail); color: var(--text); padding: 10px 16px; border-radius: var(--r-card); display: none;
   max-width: calc(100% - 32px); z-index: 10; box-shadow: 0 8px 24px rgba(0,0,0,.4); }
@@ -293,7 +310,7 @@ ins.w { background: var(--pass-bg); color: var(--pass); text-decoration: underli
     <p>Is this prompt or model change safe to ship? <span aria-hidden="true">·</span> project <code id="project">supportbot</code></p>
   </div>
   <div class="status">
-    <span class="pill mock" tabindex="0" title="Every output, latency and cost on this page comes from a scripted, deterministic mock model (guard/mock_model.py), so the demo is reproducible. No real LLM or customer data is involved.">
+    <span class="pill mock">
       <svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.5" d="M8 1.75 14.5 13.5h-13z M8 6v3.5 M8 11.25v.5"/></svg>
       Mock model · illustrative data</span>
     <span class="pill"><span class="dot" id="db-dot"></span><span id="db-label">Connecting to MongoDB…</span></span>
@@ -371,6 +388,7 @@ ins.w { background: var(--pass-bg); color: var(--pass); text-decoration: underli
           <dt>INCONCLUSIVE</dt><dd>Some cases timed out or errored, so they could not be verified. Missing data never counts as a pass.</dd>
           <dt>RISKY</dt><dd>No regressions, but p95 latency rose more than 25% or total cost more than 30%.</dd>
           <dt>SAFE</dt><dd>No regressions, every case verified, latency and cost within limits.</dd>
+          <dt>Data</dt><dd>Every output, latency and cost here comes from a scripted, deterministic mock model, so the demo is reproducible. No real LLM or customer data is involved.</dd>
         </dl>
       </details>
     </section>
@@ -447,6 +465,7 @@ const ICON_PATHS = {
   question: "M5.75 6a2.25 2.25 0 1 1 3.1 2.08c-.5.22-.85.66-.85 1.2v.47 M8 12.25v.5",
   dash: "M4 8h8",
   chevron: "M6 4l4 4-4 4",
+  branch: "M5 2.5v11 M11 2.75a1.5 1.5 0 1 1 0 3a1.5 1.5 0 1 1 0-3 M11 5.75c0 3.25-6 2-6 5.25",
 };
 const icon = (name, cls = "ico") => `<svg class="${cls}" viewBox="0 0 16 16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="${ICON_PATHS[name]}"/></svg>`;
 const STATUS_LABEL = { running: "Running", completed: "Completed", completed_with_errors: "Completed with unverified cases", failed: "Failed" };
@@ -498,7 +517,7 @@ function gitLabel(git) {
   const sha = git.commit_url ? `<a href="${esc(git.commit_url)}" ${stop}>${esc(git.short)}</a>` : esc(git.short);
   const pr = git.pr ? (git.pr_url ? ` · <a href="${esc(git.pr_url)}" ${stop}>PR #${git.pr}</a>` : ` · PR #${git.pr}`) : "";
   const src = git.source === "github-actions" ? " · CI" : "";
-  return `<span class="git" title="${esc(git.branch || "")}">⎇ ${sha}${pr}${src}</span>`;
+  return `<span class="git" title="${esc(git.branch || "")}">${icon("branch")} ${sha}${pr}${src}</span>`;
 }
 
 function renderRuns() {
@@ -553,6 +572,7 @@ function renderResults() {
   $("run-summary").innerHTML = `<span class="tag ${STATUS_TAG[run.status] || "neutral"}">${esc(STATUS_LABEL[run.status] || run.status)}</span>
     <span class="pill">${passed}/${results.size} passed${errors ? ` · ${errors} unverified` : ""}</span>`;
   $("progress-bar").style.width = `${Math.min(100, (results.size / total) * 100)}%`;
+  $("progress-bar").parentElement.classList.toggle("done", run.status !== "running");
 
   const rows = [];
   for (const tc of state.testCases) {
@@ -569,7 +589,7 @@ function renderResults() {
       : (r.checks || []).filter((c) => !c.passed).map((c) => `<div class="detail"><code>${esc(c.type)}</code>: ${esc(c.detail)}</div>`).join("");
     const open = state.expanded.has(tc._id);
     rows.push(`<tr class="res ${r._fresh ? "new" : ""}" data-tc="${esc(tc._id)}">
-      <td><button class="row-toggle" aria-expanded="${open}" aria-controls="exp-${esc(tc._id)}">${icon("chevron", "ico chev")}<span>
+      <td><button class="row-toggle" aria-expanded="${open}"${open ? ` aria-controls="exp-${esc(tc._id)}"` : ""}>${icon("chevron", "ico chev")}<span>
         <span class="tc-name">${esc(tc._id)} · ${esc(tc.name)}</span><span class="tc-risk" style="display:block">${esc(tc.risk || "")}</span></span></button></td>
       <td>${tag}</td><td>${why}</td>
       <td class="num">${ok ? r.latency_ms + " ms" : "—"}</td><td class="num">${fmtCost(r.cost_usd)}</td></tr>`);
@@ -580,7 +600,7 @@ function renderResults() {
       rows.push(`<tr class="expand" id="exp-${esc(tc._id)}"><td colspan="5"><div class="hint" style="margin:0 0 4px">Customer input</div>
         <pre class="out">${esc(tc.input)}</pre><div class="hint" style="margin:10px 0 4px">Model output</div>
         <pre class="out">${esc(r.output ?? "(no output: " + r.status + ")")}</pre><ul class="checklist">${checks}</ul>
-        <div class="hint mono">_id ${esc(r._id)} · ${r.tokens_in ?? "—"} in / ${r.tokens_out ?? "—"} out tokens</div></td></tr>`);
+        <div class="hint mono">${r.latency_ms != null ? r.latency_ms + " ms" : "no latency (unverified)"} · ${fmtCost(r.cost_usd)} · ${r.tokens_in ?? "—"} in / ${r.tokens_out ?? "—"} out tokens · _id ${esc(r._id)}</div></td></tr>`);
     }
   }
   body.innerHTML = rows.join("");
@@ -695,7 +715,9 @@ async function openDiff(tcId, focus = false) {
   const c = state.comparison;
   if (!c) return;
   state.diffTc = tcId;
-  document.querySelectorAll(".cell[data-tc]").forEach((el) => el.classList.toggle("sel", el.dataset.tc === tcId));
+  document.querySelectorAll(".cell[data-tc]").forEach((el) => {
+    el.classList.toggle("sel", el.dataset.tc === tcId); el.tabIndex = el.dataset.tc === tcId ? 0 : -1;
+  });
   let d;
   try {
     d = await api(`/api/diff?baseline=${encodeURIComponent(c.baseline_run)}&candidate=${encodeURIComponent(c.candidate_run)}&test_case_id=${encodeURIComponent(tcId)}`);
@@ -824,7 +846,8 @@ function upsertRun(run) {
   const finished = prev && prev.status === "running" && run.status !== "running";
   if (finished) {
     const s = run.summary || {};
-    log(`run ${esc(run._id)} ${esc(run.status)}: ${s.passed}/${s.total} passed`, "ok");
+    log(`run #${runNumber(run._id)} ${esc(run.prompt_version)} ${esc((STATUS_LABEL[run.status] || run.status).toLowerCase())}: ${s.passed}/${s.total} passed${s.errors ? `, ${s.errors} unverified` : ""}`,
+      { completed: "neutral", completed_with_errors: "warn", failed: "bad" }[run.status] || "neutral");
     if (state.myRuns.has(run._id)) onMyRunFinished(run);
     loadHistory();
   }
@@ -854,8 +877,10 @@ async function loadAll() {
   const [runs, latest] = await Promise.all([api("/api/runs?limit=30"), api("/api/comparisons/latest")]);
   runs.forEach((r) => state.runs.set(r._id, r));
   renderRuns();
-  if (latest && !state.comparison) { state.comparison = latest; renderVerdict(latest); }
-  if (!state.selectedRun && runs[0]) await selectRun(runs[0]._id);
+  if (latest && !state.comparison) { state.comparison = latest; renderRuns(); renderVerdict(latest); }
+  // Results open on the verdict's candidate, so the page tells one story on load.
+  const first = latest && state.runs.has(latest.candidate_run) ? latest.candidate_run : runs[0] && runs[0]._id;
+  if (!state.selectedRun && first) await selectRun(first);
   await loadHistory();
 }
 
@@ -874,10 +899,21 @@ async function doCompare() {
   $("compare-btn").disabled = true;
   try {
     const c = await api("/api/compare", { method: "POST", body: JSON.stringify({ baseline, candidate }) });
-    state.comparison = c; setPending(""); renderVerdict(c, true);
-    log(`verdict ${c.baseline_version}→${c.candidate_version}: <b>${c.verdict}</b>`, c.verdict === "SAFE" ? "ok" : "bad");
+    applyComparison(c);
   } catch (e) { setPending(""); toast(`Could not compare: ${e.message}`); }
   finally { $("compare-btn").disabled = false; }
+}
+
+const VERDICT_LOG = { SAFE: "ok", RISKY: "warn", NOT_SAFE: "bad", INCONCLUSIVE: "info" };
+
+function applyComparison(c, { logIt = true } = {}) {
+  // One place where a new verdict lands, so verdict, selectors and results always agree.
+  state.comparison = c; setPending("");
+  ["baseline", "candidate"].forEach((id) => delete $(id).dataset.touched);
+  renderRuns(); renderVerdict(c, true);
+  const busy = [...state.myRuns].some((id) => (state.runs.get(id) || {}).status === "running");
+  if (!busy && state.runs.has(c.candidate_run) && state.selectedRun !== c.candidate_run) selectRun(c.candidate_run, false);
+  if (logIt) log(`verdict ${esc(c.baseline_version)} → ${esc(c.candidate_version)}: <b>${VERDICT[c.verdict].title}</b>`, VERDICT_LOG[c.verdict]);
 }
 
 function setPending(text) {
@@ -927,7 +963,7 @@ function connectStream() {
   es.addEventListener("comparison", (e) => {
     const c = JSON.parse(e.data);
     if (!state.comparison || state.comparison._id !== c._id || state.comparison.created_at !== c.created_at) {
-      state.comparison = c; renderVerdict(c, true);
+      applyComparison(c, { logIt: !state.comparison || state.comparison._id !== c._id });
     }
   });
   es.onerror = () => { if (state.mode !== "polling") setLive("connecting"); };
@@ -1007,7 +1043,8 @@ $("reset-btn").onclick = async () => {
     renderRuns(); renderResults(); renderVerdict(null); renderHistory(); }
 };
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && state.diffTc) { e.preventDefault(); $("diff-close").click(); }
+  const inVerdict = document.activeElement === document.body || $("verdict-card").contains(document.activeElement);
+  if (e.key === "Escape" && state.diffTc && inVerdict) { e.preventDefault(); $("diff-close").click(); }
 });
 init();
 </script>
