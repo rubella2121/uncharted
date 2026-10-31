@@ -60,13 +60,15 @@ guard/mock_model.py  call_model(prompt_version, test_case, simulate_timeout) + s
 guard/runner.py      start_run(), run_eval(db, version, simulate_timeouts=, run_id=, on_result=, delay_s=)
 guard/compare.py     compare_pipeline(), run_stats(), decide(), compare_runs(db, base, cand)
 guard/demo.py        replay_duplicate(), insert_incomplete()  (failure-case demos)
+guard/gitmeta.py     detect(): commit/branch/PR for a run (env vars or local git)
+guard/report.py      markdown_report(): PR comment / job summary for a comparison
 guard/api.py         FastAPI app: REST + /api/stream SSE (change streams); `uvicorn guard.api:app --reload`
 web/index.html       dashboard: single page, plain JS, no build step (REST first, then SSE)
-data/*.json          prompts.json (v1,v2,v3), test_cases.json (tc01..tc30)
+data/*.json          prompts.json (v1,v2,v3), test_cases.json (tc01..tc30), release.json (PR bot)
 tests/               pytest; conftest.py gives a mongomock `db` fixture
-docs/                SPEC (design), PROGRESS (status), DEPLOY, DEMO_SCRIPT, PPT_OUTLINE
+docs/                SPEC (design), PROGRESS (status), DEPLOY, GITHUB, DEMO_SCRIPT, PPT_OUTLINE
 render.yaml, Dockerfile, Procfile   deployment (always 1 worker)
-.github/workflows/   tests.yml (pytest on push), prompt-guard.yml (CI gate example)
+.github/workflows/   tests.yml (pytest), prompt-guard.yml (manual gate), prompt-guard-pr.yml (PR bot)
 ```
 
 ## Rules that must not be broken

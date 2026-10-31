@@ -21,7 +21,7 @@ each at least three times, and reset the run history before recording.
 | 3:15–3:50 | **Run v3** | Few-shot prompt: all 30 pass, but **RISKY**: p95 +40%, cost +68%. "It is a decision aid, not just pass/fail." |
 | 3:50–4:40 | **Run v3 with timeouts tc03, tc05, tc09** | **INCONCLUSIVE**. "Most tools would report 27 of 27 = 100% and be wrong. Missing data can never prove safety." Then scroll to the **version history chart**: readiness 98 → 88 → 90 → 84, the whole story in one picture from one aggregation. |
 | 4:40–5:30 | Failure buttons + MongoDB Atlas (Compass or the Atlas UI) | Re-send a result → duplicate ignored, count unchanged (stable ID + unique index). Result without run_id → rejected by `$jsonSchema`. Show a result document, the validator and the indexes; click **Show query plan** → IXSCAN. |
-| 5:30–6:00 | Terminal: `python -m guard compare v1 v2; echo $?` → 1 | "Exit codes make it a CI merge gate; there is a GitHub Actions workflow in the repo." Closing line. |
+| 5:30–6:15 | GitHub: the PR that switches `data/release.json` to v2 | The bot's comment: ❌ NOT SAFE with the 5 regressions and why; the red **guard** check blocks the merge. Back in the dashboard, the CI runs carry `⎇ commit · PR #N · CI`. "The same tool guards every pull request." Closing line. |
 
 ## Final presentation (10 minutes)
 

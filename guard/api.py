@@ -22,7 +22,7 @@ from guard import compare as cmp
 from guard import config
 from guard import db as dbmod
 from guard import demo as demomod
-from guard import runner
+from guard import gitmeta, runner
 from guard.seed import seed
 
 LIVE_DELAY_S = 0.2           # pause between test cases so rows visibly stream in (30 cases ≈ 6 s)
@@ -169,11 +169,12 @@ def start_run(req: RunRequest):
     timeouts = set(req.simulate_timeouts)
     try:
         if req.wait:
-            return _json(runner.run_eval(database, req.version, simulate_timeouts=timeouts))
+            return _json(runner.run_eval(database, req.version, simulate_timeouts=timeouts,
+                                          git=gitmeta.detect_cached()))
         with _active_lock:
             if len(_active_runs) >= MAX_CONCURRENT_RUNS:
                 raise HTTPException(429, "too many runs in progress, try again shortly")
-            run_id = runner.start_run(database, req.version)
+            run_id = runner.start_run(database, req.version, git=gitmeta.detect_cached())
             _active_runs.add(run_id)
     except runner.VersionNotFound as e:
         raise HTTPException(404, str(e))

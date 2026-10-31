@@ -195,6 +195,8 @@ ins.w { background: var(--pass-bg); color: var(--pass); text-decoration: none; b
 .tip .row span:first-child { color: var(--muted); }
 .score { display: inline-block; min-width: 30px; text-align: center; font-family: var(--mono); font-size: 11.5px;
   padding: 1px 6px; border-radius: 6px; background: var(--panel-2); border: 1px solid var(--border); color: var(--text); }
+.git { font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
+.git a { color: var(--info); text-decoration: none; } .git a:hover { text-decoration: underline; }
 .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--fail-bg);
   border: 1px solid var(--fail); color: #fff; padding: 10px 16px; border-radius: 10px; display: none;
   max-width: calc(100% - 32px); z-index: 10; }
@@ -361,6 +363,16 @@ function runLabel(r) {
   return `${r.prompt_version} · ${fmtTime(r.started_at)} · ${score}${s && s.errors ? ` · ${s.errors} timeout` : ""}`;
 }
 
+function gitLabel(git) {
+  // "a1b2c3d · PR #4" with links to GitHub; empty when the run has no git metadata.
+  if (!git) return "";
+  const stop = 'onclick="event.stopPropagation()" target="_blank" rel="noopener"';
+  const sha = git.commit_url ? `<a href="${esc(git.commit_url)}" ${stop}>${esc(git.short)}</a>` : esc(git.short);
+  const pr = git.pr ? (git.pr_url ? ` · <a href="${esc(git.pr_url)}" ${stop}>PR #${git.pr}</a>` : ` · PR #${git.pr}`) : "";
+  const src = git.source === "github-actions" ? " · CI" : "";
+  return `<span class="git" title="${esc(git.branch || "")}">⎇ ${sha}${pr}${src}</span>`;
+}
+
 function renderRuns() {
   const list = sortedRuns();
   $("runs").innerHTML = list.length ? list.map((r) => {
@@ -371,7 +383,7 @@ function renderRuns() {
     return `<li data-id="${esc(r._id)}" class="${r._id === state.selectedRun ? "sel" : ""}">
       <span class="v">${esc(r.prompt_version)}</span>
       ${scoreOf(r._id) != null ? `<span class="score" title="Readiness score">${scoreOf(r._id)}</span>` : ""}
-      <span class="meta">${fmtTime(r.started_at)}${s && s.errors ? ` · ${s.errors} timeout` : ""}<br><span class="mono">${esc(r._id)}</span></span>${tag}</li>`;
+      <span class="meta">${fmtTime(r.started_at)}${s && s.errors ? ` · ${s.errors} timeout` : ""}<br><span class="mono">${esc(r._id)}</span>${r.git ? "<br>" + gitLabel(r.git) : ""}</span>${tag}</li>`;
   }).join("") : `<li class="empty-state">No runs yet</li>`;
   $("runs").querySelectorAll("li[data-id]").forEach((li) => li.onclick = () => selectRun(li.dataset.id));
 
@@ -462,7 +474,8 @@ function renderVerdict(c, fresh = false) {
   area.innerHTML = `
     <div class="verdict ${c.verdict} ${fresh ? "fresh" : ""}">
       <div class="icon">${v.icon}</div><div class="title">${v.title}</div>
-      <div class="sub">${esc(c.baseline_version)} → ${esc(c.candidate_version)} · ${v.sub}</div>
+      <div class="sub">${esc(c.baseline_version)} → ${esc(c.candidate_version)} · ${v.sub}
+        ${c.candidate_git ? `<br>Candidate built from ${gitLabel(c.candidate_git)}` : ""}</div>
       <ul>${c.reasons.map((r) => `<li>${esc(r)}</li>`).join("")}</ul>
     </div>
     ${c.warnings && c.warnings.length ? `<div class="warnings">⚠ ${c.warnings.map(esc).join("; ")}</div>` : ""}

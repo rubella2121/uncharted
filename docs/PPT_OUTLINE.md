@@ -16,5 +16,5 @@ Screenshots should come from the deployed app.
 | 8 | Reliability | Stable IDs plus unique index (duplicate ignored), `$jsonSchema` envelope with a flexible payload (incomplete rejected), timeouts are data, not crashes. |
 | 9 | Aggregation | The comparison pipeline (`$match` → `$group` flags → `$switch`) and `$percentile` p95; the explain output showing IXSCAN. |
 | 10 | Technology choices | Python, FastAPI, pymongo, Server-Sent Events, plain HTML/JS, MongoDB Atlas, Render. Why each one (simple, fast to build, few moving parts). |
-| 11 | Impact and next steps | CI gate via exit codes (GitHub Actions workflow included). Next: real-LLM mode, LLM-judge checks, PR comments, production baseline pinning. |
+| 11 | GitHub merge gate | Screenshot of the PR bot comment (❌ NOT SAFE, regressed cases with reasons) and the red check; runs tagged with commit and PR in the dashboard. Next steps: real-LLM mode, LLM-judge checks, production baseline pinning. |
 | 12 | Thank you | Live URL, GitHub URL, QR code. |

@@ -302,7 +302,19 @@ Change streams need a replica set: Atlas (even free M0) has one; a plain local
   passed. Demo values: v1 98, v2 88, v3 90, v3 with 3 timeouts 84. The score is a
   summary for humans; the verdict rules (section 10) remain the release gate.
 
+## 13c. GitHub integration (added 31 Oct)
+
+- `guard/gitmeta.py` `detect()` → `{sha, short, branch, pr, repo, source, commit_url,
+  pr_url}` from `GUARD_*`, `GITHUB_*`, `RENDER_GIT_*` env vars or local git; `None` if
+  unknown. Stored once per run as `eval_runs.git` (validator: object with `sha`; sparse
+  index `git_sha`). Comparisons copy `baseline_git` / `candidate_git`.
+- `guard/report.py` `markdown_report(db, comparison, dashboard_url)` → PR comment text,
+  starting with the hidden marker `<!-- prompt-regression-guard -->` so the bot edits
+  its own comment. `guard compare A B --markdown FILE` writes it before exiting.
+- `data/release.json` `{baseline, candidate}` selects what the PR bot compares.
+- Details and demo steps: `docs/GITHUB.md`.
+
 ## 14. Out of scope unless everything else is done
 
 LLM-as-judge, real LLM `--live` mode, `--repeats N`, auth, multiple projects in the UI,
-n8n integration. Do not start these before docs/PROGRESS.md steps 1-7 are done.
+n8n integration, GitHub App / webhooks. Do not start these before docs/PROGRESS.md steps 1-7 are done.

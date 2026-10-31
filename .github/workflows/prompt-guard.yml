@@ -1,4 +1,5 @@
-# Example: Prompt Regression Guard as a merge gate.
+# Manual run of the merge gate (Actions > prompt-guard > Run workflow).
+# The automatic pull-request version with PR comments is prompt-guard-pr.yml.
 # Runs the candidate prompt, compares it with the baseline, and fails the job unless the
 # verdict is SAFE (exit code 0). Needs the repository secret MONGODB_URI.
 # Triggered manually here so the hackathon repo's CI does not depend on the secret.
@@ -18,8 +19,8 @@ jobs:
     env:
       MONGODB_URI: ${{ secrets.MONGODB_URI }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - run: pip install -r requirements.txt
@@ -27,4 +28,7 @@ jobs:
       - run: python -m guard run ${{ inputs.baseline }}
       - run: python -m guard run ${{ inputs.candidate }}
       - name: Release verdict (0 SAFE, 1 NOT SAFE, 2 RISKY/INCONCLUSIVE)
-        run: python -m guard compare ${{ inputs.baseline }} ${{ inputs.candidate }}
+        run: python -m guard compare ${{ inputs.baseline }} ${{ inputs.candidate }} --markdown report.md
+      - name: Job summary
+        if: always() && hashFiles('report.md') != ''
+        run: cat report.md >> "$GITHUB_STEP_SUMMARY"

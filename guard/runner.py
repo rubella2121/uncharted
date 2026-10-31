@@ -81,9 +81,11 @@ def get_prompt_version(db: Database, version: str, project_id: str = config.PROJ
 
 
 def start_run(db: Database, version: str, project_id: str = config.PROJECT_ID,
-              run_id: str | None = None) -> str:
+              run_id: str | None = None, git: dict | None = None) -> str:
     """Validate the version and create (or reopen) the eval_runs document. Split out of
-    run_eval so the API can return the run_id before the slow part starts."""
+    run_eval so the API can return the run_id before the slow part starts.
+
+    git (from gitmeta.detect()) links the run to the commit/PR that produced it."""
     get_prompt_version(db, version, project_id)
     test_cases = list(db[config.TEST_CASES].find({"project_id": project_id}).sort("_id", 1))
     if not test_cases:
@@ -100,7 +102,8 @@ def start_run(db: Database, version: str, project_id: str = config.PROJECT_ID,
         {"$set": {"status": "running", "test_set_size": len(test_cases),
                   "test_set_hash": test_set_hash(test_cases)},
          "$setOnInsert": {"project_id": project_id, "prompt_version": version,
-                          "started_at": utcnow()}},
+                          "started_at": utcnow(),
+                          **({"git": git} if git else {})}},
         upsert=True,
     )
     return run_id
@@ -109,7 +112,7 @@ def start_run(db: Database, version: str, project_id: str = config.PROJECT_ID,
 def run_eval(db: Database, version: str, *, simulate_timeouts: set[str] | None = None,
              run_id: str | None = None, on_result: Callable[[dict], None] | None = None,
              delay_s: float = 0.0, model_fn: Callable = call_model,
-             project_id: str = config.PROJECT_ID) -> dict:
+             project_id: str = config.PROJECT_ID, git: dict | None = None) -> dict:
     """Run every test case against `version`. Returns the final eval_runs document.
 
     on_result(event) is called once per test case with
@@ -117,7 +120,7 @@ def run_eval(db: Database, version: str, *, simulate_timeouts: set[str] | None =
     delay_s pauses between cases so the live dashboard visibly fills row by row.
     """
     simulate_timeouts = simulate_timeouts or set()
-    run_id = start_run(db, version, project_id, run_id)
+    run_id = start_run(db, version, project_id, run_id, git)
     pv = get_prompt_version(db, version, project_id)
     test_cases = list(db[config.TEST_CASES].find({"project_id": project_id}).sort("_id", 1))
     already = {d["test_case_id"] for d in

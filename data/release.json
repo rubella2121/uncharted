@@ -1,0 +1,5 @@
+{
+  "_comment": "The pull-request bot compares candidate against baseline. To propose a prompt change, point candidate at the new version in a PR.",
+  "baseline": "v1",
+  "candidate": "v3"
+}

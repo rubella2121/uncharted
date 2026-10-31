@@ -8,7 +8,7 @@ from pymongo.errors import DuplicateKeyError, WriteError
 from guard import config, db as dbmod
 from guard import compare as cmp
 from guard import demo as demomod
-from guard import runner
+from guard import gitmeta, report, runner
 from guard.ids import utcnow
 from guard.seed import seed as seed_data
 
@@ -158,18 +158,26 @@ def run(
 
     try:
         doc = runner.run_eval(database, version, simulate_timeouts=timeouts,
-                              run_id=run_id, on_result=show, delay_s=delay)
+                              run_id=run_id, on_result=show, delay_s=delay,
+                              git=gitmeta.detect())
     except ValueError as e:
         _fail(str(e))
     s = doc["summary"]
+    git = doc.get("git")
     typer.secho(f"Run {doc['_id']}: {s['passed']}/{s['total']} passed, {s['errors']} "
-                f"error/timeout, status {doc['status']}", bold=True)
+                f"error/timeout, status {doc['status']}"
+                + (f", commit {git['short']}" + (f" (PR #{git['pr']})" if git.get("pr") else "")
+                   if git else ""), bold=True)
 
 
 @app.command()
 def compare(
     baseline: str = typer.Argument(..., help="Baseline version or run ID, e.g. v1"),
     candidate: str = typer.Argument(..., help="Candidate version or run ID, e.g. v2"),
+    markdown: str = typer.Option(None, "--markdown",
+                                 help="Also write a Markdown report to this file (PR comment)"),
+    dashboard_url: str = typer.Option(None, "--dashboard-url", envvar="GUARD_DASHBOARD_URL",
+                                      help="Link the report to the deployed dashboard"),
 ):
     """Compare two runs and print the release verdict. Exit code: 0 SAFE, 1 NOT SAFE,
     2 RISKY/INCONCLUSIVE (use it as a CI gate)."""
@@ -178,6 +186,9 @@ def compare(
         c = cmp.compare_runs(database, baseline, candidate)
     except ValueError as e:
         _fail(str(e))
+    if markdown:  # written before printing, so CI gets the report even when it fails
+        with open(markdown, "w", encoding="utf-8") as f:
+            f.write(report.markdown_report(database, c, dashboard_url))
 
     typer.echo(f"Baseline  {c['baseline_run']}\nCandidate {c['candidate_run']}\n")
     for row in c["rows"]:

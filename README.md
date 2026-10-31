@@ -162,10 +162,19 @@ Tests (no database needed, they use mongomock):
 python -m pytest -q
 ```
 
-## Use it as a CI gate
+## GitHub integration: a merge gate with a PR bot
 
-`compare` exits non-zero unless the verdict is SAFE, so one workflow step blocks a merge.
-See [`.github/workflows/prompt-guard.yml`](.github/workflows/prompt-guard.yml).
+- **Pull-request bot** (`.github/workflows/prompt-guard-pr.yml`): every PR that touches
+  prompts or test cases runs the guard, **comments the verdict on the PR** (regressed
+  cases with the reason each one fails, metrics, link to the dashboard) and fails the
+  check unless the verdict is SAFE, so branch protection blocks the merge.
+- **Commit tracking**: every run stores the commit, branch and PR that produced it
+  (`guard/gitmeta.py`, indexed on `git.sha`), and the dashboard links runs and verdicts
+  back to GitHub.
+- **CI exit codes**: `compare` exits 0 SAFE, 1 NOT SAFE, 2 RISKY/INCONCLUSIVE, and
+  `--markdown report.md` writes the same report for any CI system.
+
+Setup and a 5-minute demo: [`docs/GITHUB.md`](docs/GITHUB.md).
 
 ## Tech stack
 

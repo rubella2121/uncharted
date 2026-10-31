@@ -1,0 +1,86 @@
+# Pull-request bot: runs the guard on every PR that touches prompts, test cases or the
+# guard itself, comments the verdict on the PR (updating its own comment on re-runs),
+# and fails the check unless the verdict is SAFE, so branch protection can block merge.
+#
+# Setup (once): repository secret MONGODB_URI; optional repository variable
+# GUARD_DASHBOARD_URL (the deployed dashboard, linked from the comment).
+# Which versions are compared comes from data/release.json.
+name: prompt-guard-pr
+on:
+  pull_request:
+    paths:
+      - "data/**"
+      - "guard/**"
+permissions:
+  contents: read
+  pull-requests: write
+concurrency:
+  group: prompt-guard-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    env:
+      MONGODB_URI: ${{ secrets.MONGODB_URI }}
+      GUARD_DASHBOARD_URL: ${{ vars.GUARD_DASHBOARD_URL }}
+      # Recorded on every run so the dashboard can link back to this commit and PR.
+      GUARD_GIT_SHA: ${{ github.event.pull_request.head.sha }}
+      GUARD_GIT_BRANCH: ${{ github.head_ref }}
+      GUARD_PR: ${{ github.event.pull_request.number }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Check configuration
+        run: |
+          if [ -z "$MONGODB_URI" ]; then
+            echo "::error::Repository secret MONGODB_URI is not set (Settings > Secrets and variables > Actions)."
+            exit 1
+          fi
+      - name: Read data/release.json
+        id: cfg
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, re
+          cfg = json.load(open("data/release.json"))
+          for key in ("baseline", "candidate"):
+              value = cfg[key]
+              if not re.fullmatch(r"[A-Za-z0-9._-]{1,32}", value):
+                  raise SystemExit(f"invalid {key} version: {value!r}")
+              print(f"{key}={value}")
+          PY
+      - run: python -m guard setup && python -m guard seed
+      - name: Run baseline
+        run: python -m guard run "$BASELINE"
+        env:
+          BASELINE: ${{ steps.cfg.outputs.baseline }}
+      - name: Run candidate
+        run: python -m guard run "$CANDIDATE"
+        env:
+          CANDIDATE: ${{ steps.cfg.outputs.candidate }}
+      - name: Release verdict (0 SAFE, 1 NOT SAFE, 2 RISKY/INCONCLUSIVE)
+        run: python -m guard compare "$BASELINE" "$CANDIDATE" --markdown report.md
+        env:
+          BASELINE: ${{ steps.cfg.outputs.baseline }}
+          CANDIDATE: ${{ steps.cfg.outputs.candidate }}
+      - name: Comment on the pull request
+        if: always() && hashFiles('report.md') != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          # Update the bot's previous comment (found by its hidden marker) instead of piling up new ones.
+          ID=$(gh api "repos/$REPO/issues/$PR/comments" --paginate \
+                 --jq '.[] | select(.body | contains("<!-- prompt-regression-guard -->")) | .id' | tail -n 1)
+          if [ -n "$ID" ]; then
+            gh api -X PATCH "repos/$REPO/issues/comments/$ID" -F body=@report.md > /dev/null
+            echo "Updated comment $ID"
+          else
+            gh pr comment "$PR" --repo "$REPO" --body-file report.md
+          fi
+      - name: Job summary
+        if: always() && hashFiles('report.md') != ''
+        run: cat report.md >> "$GITHUB_STEP_SUMMARY"

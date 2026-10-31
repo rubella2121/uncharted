@@ -73,6 +73,8 @@ VALIDATORS: dict[str, dict] = {
             "finished_at": _DATE,
             "test_set_size": _NONNEG,
             "test_set_hash": _STR,
+            "git": {"bsonType": "object", "required": ["sha"],
+                    "properties": {"sha": _STR, "pr": {"bsonType": ["int", "long", "null"]}}},
         },
     },
     config.EVAL_RESULTS: {
@@ -135,6 +137,8 @@ INDEXES: dict[str, list[tuple[list, dict]]] = {
         # "Latest run of version v2"
         ([("project_id", ASCENDING), ("prompt_version", ASCENDING), ("started_at", DESCENDING)],
          {"name": "project_version_started"}),
+        # "Which runs were produced by commit X?" (PR bot, traceability)
+        ([("git.sha", ASCENDING)], {"name": "git_sha", "sparse": True}),
     ],
     config.PROMPT_VERSIONS: [
         # No two "v2"s in one project
